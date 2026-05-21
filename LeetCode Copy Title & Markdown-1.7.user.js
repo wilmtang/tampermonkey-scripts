@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    http://tampermonkey.net/
-// @version      1.7
-// @description  Adds buttons to copy the title and the entire problem description to Markdown
+// @version      2.0
+// @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
 // @author       You
 // @match        https://leetcode.com/problems/*/
 // @match        https://leetcode.com/problems/*/description/
@@ -17,6 +17,54 @@
     const CONTAINER_ID = 'lc-copy-btns-container';
     let lastInjectedTitle = null;
     let lastPathname = null;
+
+    // --- NEW in 2.0: Prevent Native Anchor Dragging ---
+    function makeTitleSelectable() {
+        if (document.getElementById('lc-selectable-style')) return;
+        
+        // 1. Force CSS rules on the title AND all its child elements
+        const style = document.createElement('style');
+        style.id = 'lc-selectable-style';
+        style.innerHTML = `
+            .text-title-large,
+            .text-title-large * {
+                -webkit-user-select: text !important;
+                -moz-user-select: text !important;
+                -ms-user-select: text !important;
+                user-select: text !important;
+                cursor: text !important;
+                pointer-events: auto !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 2. Intercept and block both React's drag cancel AND the browser's native link dragging
+        const stopDragCancel = function(e) {
+            let target = e.target;
+            while (target && target !== document.body) {
+                if (target.classList && target.classList.contains('text-title-large')) {
+                    if (e.type === 'dragstart') {
+                        // This stops the browser from showing the "ghost link" image
+                        e.preventDefault(); 
+                    } else {
+                        // This stops React from canceling the text selection
+                        e.stopPropagation(); 
+                    }
+                    break;
+                }
+                target = target.parentNode;
+            }
+        };
+
+        // Listen during the capture phase (true) to intercept before other scripts
+        document.addEventListener('mousedown', stopDragCancel, true);
+        document.addEventListener('selectstart', stopDragCancel, true);
+        document.addEventListener('dragstart', stopDragCancel, true); // Added dragstart listener
+    }
+
+    // Run immediately to ensure text is selectable as soon as page loads
+    makeTitleSelectable();
+
 
     // --- Helper: Creates the standardized buttons ---
     function createButtonBase(title, text) {
