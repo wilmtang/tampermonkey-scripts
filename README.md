@@ -11,6 +11,7 @@ Because the script parses the raw XML on the client-side, it is extremely fast a
 ### Core Features
 - **Dual-Axis Charting:** Displays simultaneous lines for **Elevation by Distance** and **Elevation by Time**.
 - **Interactive Tooltips:** Hovering over the chart reveals the precise elevation, distance, grade, and timestamp for any given trackpoint.
+- **Map Synchronization:** Hovering over the chart actively injects a moving marker into Peakbagger's native geographic Leaflet map in real-time.
 - **Unit Persistence:** Seamlessly toggle between Imperial (miles/feet) and Metric (km/meters) units. Your preference is saved locally.
 - **Multi-Day Support:** Automatically detects trips spanning multiple days, appending "Day 1", "Day 2" labels to timestamps and axes.
 - **Camping Spots:** Automatically identifies and maps out overnight camping coordinates.
@@ -50,3 +51,20 @@ When parsing the GPX track chronologically, the script monitors the relative day
 > [!NOTE]
 > This detection logic is purely chronological (based on the transition of calendar days) and does not compare the spatial coordinates of Day 1's end to Day 2's start. Consequently, it is completely immune to overnight GPS drift; the script simply records the very last coordinate transmitted on Day 1 as the camp location.
 
+---
+
+## UI Interactions & Problem Solving
+
+### Map Synchronization (The Hover Dot)
+A major feature of this script is synchronizing the 2D elevation chart with Peakbagger's native geographic map. 
+1. **Iframe Interception:** The script detects the `MasterMap.aspx` iframe on the page and accesses its internal `contentWindow`.
+2. **Leaflet Hooking:** It successfully hooks into Peakbagger's global `L` (Leaflet) object and the `mapsPlaceholder` map instance.
+3. **Real-time Injection:** During Chart.js's `onHover` event, the script extracts the geographic `lat`/`lon` hidden inside the hovered data point. It rapidly calls Leaflet's `setLatLng()` to move a high-visibility, color-coded `L.circleMarker` along the actual geographic route, perfectly in sync with the user's cursor on the chart.
+
+### Fixing "The Jittering Problem"
+When plotting two distinct X-axes (Distance vs. Time) on the same Y-axis canvas, Chart.js struggles to determine which line the user is hovering over, causing rapid visual jittering as the tooltip violently switches between the two datasets.
+- **The Solution:** By setting the Chart.js interaction mode to `{ mode: 'nearest', intersect: true, axis: 'xy' }`, the engine evaluates the cursor's proximity in *both* horizontal and vertical space simultaneously. This creates a rock-solid hover focus that perfectly respects which line the user's mouse is physically closest to.
+
+### Disappearing Focus Boundary
+If the user moves their cursor far away from the charted lines (into the whitespace of the canvas), the tooltip and map dot should cleanly disappear instead of permanently locking to the edge of the graph.
+- **The Solution:** We set `hitRadius: 40` on the datasets and `intersect: true` on the interaction engine. This creates an exact 40-pixel interactive boundary around the lines. The moment the cursor exits this 40-pixel radius, the hover focus is natively destroyed, instantly hiding the tooltip and dynamically fading out the Leaflet map dot.

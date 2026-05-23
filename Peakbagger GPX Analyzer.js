@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.4
+// @version      13.6
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -147,7 +147,7 @@
                 data: eleDistData,
                 borderColor: '#fc4c02',
                 backgroundColor: 'rgba(252, 76, 2, 0.15)',
-                borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5, hitRadius: 30
+                borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5, hitRadius: 40
             }];
 
             if (hasTime) {
@@ -156,7 +156,7 @@
                     data: eleTimeData,
                     borderColor: '#6ab0de',
                     backgroundColor: 'rgba(0, 127, 182, 0.15)',
-                    borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5, hitRadius: 30
+                    borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5, hitRadius: 40
                 });
             }
 
@@ -197,7 +197,7 @@
 
                                 if (!hoverMarker) {
                                     hoverMarker = L.circleMarker([d.lat, d.lon], {
-                                        radius: 5,
+                                        radius: 9,
                                         color: '#FFFFFF',
                                         fillColor: fillColor,
                                         fillOpacity: 1,
