@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      12.0
+// @version      12.1
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
+// @match        https://www.peakbagger.com/climber/Ascent.aspx*
 // @require      https://cdn.jsdelivr.net/npm/chart.js
 // @grant        none
 // ==/UserScript==
@@ -26,7 +27,7 @@
     const stats = document.createElement('div');
     Object.assign(stats.style, { fontFamily: 'sans-serif', fontWeight: 'bold' });
     stats.innerText = "Analyzing GPX data...";
-    
+
     const subStats = document.createElement('div');
     Object.assign(subStats.style, { fontFamily: 'sans-serif', fontSize: '0.9em', color: '#444', marginTop: '4px', fontStyle: 'italic' });
 
@@ -49,10 +50,10 @@
     // 2. Mathematical & Formatting Helpers
     const toRad = x => x * Math.PI / 180;
     const calcDistMiles = (l1, n1, l2, n2) => {
-        const a = Math.sin(toRad(l2-l1)/2)**2 + Math.cos(toRad(l1))*Math.cos(toRad(l2))*Math.sin(toRad(n2-n1)/2)**2;
-        return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(toRad(l2 - l1) / 2) ** 2 + Math.cos(toRad(l1)) * Math.cos(toRad(l2)) * Math.sin(toRad(n2 - n1) / 2) ** 2;
+        return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
-    const fmtTime = ms => ms > 0 ? `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m` : '0m';
+    const fmtTime = ms => ms > 0 ? `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m` : '0m';
     const getRelativeDay = (ms, startMs) => {
         const startDate = new Date(startMs);
         const currDate = new Date(ms);
@@ -62,7 +63,7 @@
         return Math.round(diffMs / 86400000) + 1;
     };
     const formatTimeStr = (ms, startMs, isMultiDay) => {
-        const timeStr = new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const timeStr = new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         if (isMultiDay) {
             return `Day ${getRelativeDay(ms, startMs)} ${timeStr}`;
         }
@@ -109,7 +110,7 @@
                 let campingHtml = "";
                 if (campingSpots.length > 0) {
                     const spotStrs = campingSpots.map(s => `Day ${s.day} (${s.lat.toFixed(5)}, ${s.lon.toFixed(5)})`).join(' | ');
-                    campingHtml = `<div style="color: #888; font-size: 0.95em; margin-top: 2px;">Possible Camping Spot: ${spotStrs}</div>`;
+                    campingHtml = `<div style="color: #888; font-size: 0.95em; margin-top: 2px;">Possible Camping: ${spotStrs}</div>`;
                 }
                 subStats.innerHTML = `
                     <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs, startMs, isMultiDay)} | Summit time: ${formatTimeStr(summitMs, startMs, isMultiDay)} | Back to car: ${formatTimeStr(endMs, startMs, isMultiDay)}</div>
@@ -137,18 +138,18 @@
         if (chartInstance) chartInstance.destroy();
 
         const datasets = [{
-            label: `Elevation by Distance`, 
-            data: eleDistData, 
-            borderColor: '#fc4c02', 
+            label: `Elevation by Distance`,
+            data: eleDistData,
+            borderColor: '#fc4c02',
             backgroundColor: 'rgba(252, 76, 2, 0.15)',
             borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5
         }];
 
         if (hasTime) {
             datasets.push({
-                label: `Elevation by Time`, 
-                data: eleTimeData, 
-                borderColor: '#6ab0de', 
+                label: `Elevation by Time`,
+                data: eleTimeData,
+                borderColor: '#6ab0de',
                 backgroundColor: 'rgba(0, 127, 182, 0.15)',
                 borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5
             });
@@ -157,13 +158,13 @@
         const maxDist = parseFloat((totalDistMiles * dMult).toFixed(2));
 
         chartInstance = new Chart(canvas.getContext('2d'), {
-            type: 'line', 
+            type: 'line',
             data: { datasets },
             options: {
-                responsive: true, maintainAspectRatio: false, 
+                responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'nearest', intersect: false, axis: 'x' },
                 plugins: {
-                    legend: { 
+                    legend: {
                         display: true,
                         position: 'bottom',
                         labels: { usePointStyle: true, boxWidth: 8 }
@@ -197,7 +198,7 @@
                         min: 0,
                         max: maxDist > 0 ? maxDist : 1,
                         title: { display: true, text: `Distance (${dUnit})` },
-                        ticks: { maxTicksLimit: 10, callback: function(v) { return parseFloat(v).toFixed(1) + ` ${dUnit}`; } }
+                        ticks: { maxTicksLimit: 10, callback: function (v) { return parseFloat(v).toFixed(1) + ` ${dUnit}`; } }
                     },
                     ...(hasTime && {
                         xTime: {
@@ -206,12 +207,12 @@
                             min: startMs,
                             max: endMs > startMs ? endMs : startMs + 1000,
                             title: { display: true, text: 'Time', color: '#007fb6' },
-                            ticks: { 
-                                maxTicksLimit: 10, 
+                            ticks: {
+                                maxTicksLimit: 10,
                                 color: '#007fb6',
-                                callback: function(v) { 
-                                    return formatTimeStr(v, startMs, isMultiDay); 
-                                } 
+                                callback: function (v) {
+                                    return formatTimeStr(v, startMs, isMultiDay);
+                                }
                             },
                             grid: { drawOnChartArea: false }
                         }
@@ -237,7 +238,7 @@
         if (!trkpts.length) return stats.innerText = "No track points found.";
 
         hasTime = !!trkpts[0].querySelector('time');
-        
+
         if (hasTime) {
             trkpts.sort((a, b) => {
                 const timeA = a.querySelector('time') ? new Date(a.querySelector('time').textContent).getTime() : 0;
@@ -261,7 +262,7 @@
 
             if (i === 0 && hasTime) startMs = ms;
             if (hasTime) endMs = ms;
-            
+
             if (ele > maxEle) {
                 maxEle = ele;
                 summitMs = ms;
@@ -279,7 +280,7 @@
                         campingSpots.push({ day: prev.day, lat: prev.lat, lon: prev.lon });
                     }
                 }
-                
+
                 // 1. Distance Threshold
                 const dFromValid = calcDistMiles(validPrevDistPt.lat, validPrevDistPt.lon, lat, lon);
                 if (dFromValid >= DIST_THRESHOLD_MILES) {
@@ -294,11 +295,11 @@
                     gainFeet += (ele - eleLocalMin);
                     eleLocalMin = ele;
                 }
-                
+
                 // 3. Grade Moving Baseline
                 recentPts.push({ dist: totalDistMiles, ele: ele });
                 if (recentPts.length > 5) recentPts.shift();
-                
+
                 if (recentPts.length > 1) {
                     const oldestPt = recentPts[0];
                     const distDiff = totalDistMiles - oldestPt.dist;
@@ -313,7 +314,7 @@
             if (i % 3 === 0 || i === trkpts.length - 1) {
                 rawData.push({
                     dist: totalDistMiles, ele: ele, grade: grade, ms: ms,
-                    time: hasTime ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null
+                    time: hasTime ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
                 });
             }
             prev = { lat, lon, ele, ms, day: hasTime ? getRelativeDay(ms, startMs) : 1 };
