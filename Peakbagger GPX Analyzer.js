@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Peakbagger GPX Analyzer (Speed Heading)
+// @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      11.0
-// @description  Interactive linear elevation/pace chart with precise moving speed heading (mph/kph) and persistent settings.
+// @version      12.0
+// @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
 // @require      https://cdn.jsdelivr.net/npm/chart.js
@@ -20,20 +20,26 @@
     Object.assign(container.style, { marginTop: '15px', padding: '10px', border: '1px solid #ccc', background: '#fafafa', borderRadius: '5px', maxWidth: '800px' });
 
     const headerBox = document.createElement('div');
-    Object.assign(headerBox.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' });
+    Object.assign(headerBox.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' });
 
+    const statsContainer = document.createElement('div');
     const stats = document.createElement('div');
     Object.assign(stats.style, { fontFamily: 'sans-serif', fontWeight: 'bold' });
     stats.innerText = "Analyzing GPX data...";
+    
+    const subStats = document.createElement('div');
+    Object.assign(subStats.style, { fontFamily: 'sans-serif', fontSize: '0.9em', color: '#444', marginTop: '4px', fontStyle: 'italic' });
+
+    statsContainer.append(stats, subStats);
 
     const unitSelect = document.createElement('select');
     Object.assign(unitSelect.style, { padding: '2px 6px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer', outline: 'none' });
     unitSelect.innerHTML = '<option value="imp">Imperial</option><option value="met">Metric</option>';
 
-    headerBox.append(stats, unitSelect);
+    headerBox.append(statsContainer, unitSelect);
 
     const canvasContainer = document.createElement('div');
-    Object.assign(canvasContainer.style, { position: 'relative', height: '250px', width: '100%' });
+    Object.assign(canvasContainer.style, { position: 'relative', height: '300px', width: '100%' });
 
     const canvas = document.createElement('canvas');
     canvasContainer.append(canvas);
@@ -47,7 +53,6 @@
         return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     };
     const fmtTime = ms => ms > 0 ? `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m` : '0m';
-    const fmtPace = val => isFinite(val) && val <= 120 ? `${Math.floor(val)}:${Math.round((val%1)*60).toString().padStart(2,'0')}` : '--:--';
 
     // 3. Persistent Settings Handling (Memory)
     const STORAGE_KEY = 'pb_gpx_unit_pref';
@@ -68,68 +73,94 @@
     let chartInstance = null;
     let rawData = [];
     let totalDistMiles = 0, gainFeet = 0, totalMs = 0, hasTime = false;
-    let moveMs = 0, moveDistMiles = 0;
+    let startMs = 0, endMs = 0, summitMs = 0, maxEle = -Infinity;
 
     // 4. Chart & UI Renderer Engine
     const renderData = () => {
         const isMet = unitSelect.value === 'met';
-        const dMult = isMet ? 1.60934 : 1, eMult = isMet ? 0.3048 : 1, pDiv = isMet ? 1.60934 : 1;
-        const dUnit = isMet ? 'km' : 'miles', eUnit = isMet ? 'm' : 'ft', pUnit = isMet ? 'min/km' : 'min/mi';
-        const speedUnit = isMet ? 'km/h' : 'mi/h';
-        const paceCeiling = isMet ? 60 : 90;
+        const dMult = isMet ? 1.60934 : 1, eMult = isMet ? 0.3048 : 1;
+        const dUnit = isMet ? 'km' : 'miles', eUnit = isMet ? 'm' : 'ft';
 
-        // Format Stats Bar - Using Speed (mi/h or km/h) for the text summary heading
+        // Format Stats Bar
         let txt = `Interactive Stats: ${(totalDistMiles * dMult).toFixed(2)} ${dUnit} | ${(gainFeet * eMult).toFixed(0)} ${eUnit} gain`;
         if (hasTime) {
-            txt += ` | ${fmtTime(totalMs)}`;
-            if (moveMs > 0 && moveDistMiles > 0) {
-                const totalMovingHours = moveMs / 3600000;
-                const speed = (moveDistMiles * dMult) / totalMovingHours;
-                txt += ` | Speed ${speed.toFixed(1)} ${speedUnit}`;
+            txt += ` | Time: ${fmtTime(totalMs)}`;
+            if (summitMs > startMs) {
+                const timeToSummit = summitMs - startMs;
+                const timeBack = endMs - summitMs;
+                const formatTimeStr = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                subStats.innerHTML = `
+                    <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs)} | Summit time: ${formatTimeStr(summitMs)} | Back to car: ${formatTimeStr(endMs)}</div>
+                    <div style="color: #888; font-size: 0.95em;">Time to summit: ${fmtTime(timeToSummit)} | Time back: ${fmtTime(timeBack)}</div>
+                `;
+            } else {
+                subStats.innerHTML = "";
             }
+        } else {
+            subStats.innerHTML = "";
         }
         stats.innerHTML = `<span style="color:#000000;">${txt}</span>`;
 
-        // Map Raw Arrays to the active unit (Internal graph units remain un-altered)
-        const labels = [], eleData = [], paceData = [];
+        // Map Raw Arrays
+        const eleDistData = [], eleTimeData = [];
         rawData.forEach(d => {
-            labels.push(parseFloat((d.dist * dMult).toFixed(2)));
-            eleData.push((d.ele * eMult).toFixed(0));
-            if (hasTime) paceData.push(d.pace ? Math.min(d.pace / pDiv, paceCeiling) : null);
+            const eleConv = parseFloat((d.ele * eMult).toFixed(0));
+            eleDistData.push({ x: parseFloat((d.dist * dMult).toFixed(2)), y: eleConv, _raw: d });
+            if (hasTime && d.ms) {
+                eleTimeData.push({ x: d.ms, y: eleConv, _raw: d });
+            }
         });
 
         if (chartInstance) chartInstance.destroy();
 
         const datasets = [{
-            label: `Elevation (${eUnit})`, data: eleData, borderColor: '#fc4c02', backgroundColor: 'rgba(252, 76, 2, 0.15)',
-            borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', pointRadius: 0, pointHoverRadius: 5
+            label: `Elevation by Distance`, 
+            data: eleDistData, 
+            borderColor: '#fc4c02', 
+            backgroundColor: 'rgba(252, 76, 2, 0.15)',
+            borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5
         }];
 
-        if (hasTime) datasets.push({
-            label: `Pace (${pUnit})`, data: paceData, borderColor: '#007fb6', borderWidth: 1.5,
-            fill: false, tension: 0.3, spanGaps: true, yAxisID: 'yPace', pointRadius: 0, pointHoverRadius: 5
-        });
+        if (hasTime) {
+            datasets.push({
+                label: `Elevation by Time`, 
+                data: eleTimeData, 
+                borderColor: '#6ab0de', 
+                backgroundColor: 'rgba(0, 127, 182, 0.15)',
+                borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5
+            });
+        }
+
+        const maxDist = parseFloat((totalDistMiles * dMult).toFixed(2));
 
         chartInstance = new Chart(canvas.getContext('2d'), {
-            type: 'line', data: { labels, datasets },
+            type: 'line', 
+            data: { datasets },
             options: {
-                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                responsive: true, maintainAspectRatio: false, 
+                interaction: { mode: 'nearest', intersect: false, axis: 'x' },
                 plugins: {
-                    legend: { display: false },
+                    legend: { 
+                        display: true,
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8 }
+                    },
                     tooltip: {
-                        filter: tooltipItem => tooltipItem.datasetIndex === 0,
                         callbacks: {
-                            title: items => `Dist: ${items[0].parsed.x.toFixed(2)} ${dUnit}`,
-                            label: item => `Elev: ${item.raw} ${eUnit} (Grade: ${rawData[item.dataIndex].grade.toFixed(1)}%)`,
+                            title: items => {
+                                const d = items[0].raw._raw;
+                                return `Dist: ${(d.dist * dMult).toFixed(2)} ${dUnit}`;
+                            },
+                            label: item => {
+                                const d = item.raw._raw;
+                                let lbl = `${item.dataset.label}: ${item.parsed.y} ${eUnit}`;
+                                if (d.grade !== undefined) lbl += ` (Grade: ${d.grade.toFixed(1)}%)`;
+                                return lbl;
+                            },
                             afterBody: items => {
-                                const d = rawData[items[0].dataIndex];
-                                let lines = [];
-                                if (hasTime) {
-                                    const pStr = d.pace ? `${fmtPace(d.pace / pDiv)}/${isMet ? 'km' : 'mi'}` : `--:--/${isMet ? 'km' : 'mi'}`;
-                                    lines.push(`Pace: ${pStr}`);
-                                    if (d.time) lines.push(`Time: ${d.time}`);
-                                }
-                                return lines;
+                                const d = items[0].raw._raw;
+                                if (hasTime && d.time) return [`Time: ${d.time}`];
+                                return [];
                             }
                         }
                     }
@@ -137,15 +168,32 @@
                 scales: {
                     x: {
                         type: 'linear',
-                        ticks: { maxTicksLimit: 10, callback: function(v) { return v + ` ${dUnit}`; } }
+                        position: 'bottom',
+                        min: 0,
+                        max: maxDist > 0 ? maxDist : 1,
+                        title: { display: true, text: `Distance (${dUnit})` },
+                        ticks: { maxTicksLimit: 10, callback: function(v) { return parseFloat(v).toFixed(1) + ` ${dUnit}`; } }
                     },
+                    ...(hasTime && {
+                        xTime: {
+                            type: 'linear',
+                            position: 'top',
+                            min: startMs,
+                            max: endMs > startMs ? endMs : startMs + 1000,
+                            title: { display: true, text: 'Time', color: '#007fb6' },
+                            ticks: { 
+                                maxTicksLimit: 10, 
+                                color: '#007fb6',
+                                callback: function(v) { 
+                                    return new Date(v).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                                } 
+                            },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }),
                     y: {
                         type: 'linear', position: 'left',
                         title: { display: true, text: `Elevation (${eUnit})`, color: '#000000' }
-                    },
-                    yPace: {
-                        type: 'linear', display: hasTime, position: 'right', reverse: true, min: 0, max: paceCeiling,
-                        title: { display: true, text: `Pace (${pUnit})`, color: '#007fb6' }, grid: { drawOnChartArea: false }
                     }
                 }
             }
@@ -170,30 +218,26 @@
             const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
             const ele = pt.querySelector('ele') ? parseFloat(pt.querySelector('ele').textContent) * 3.28084 : 0;
             const ms = pt.querySelector('time') ? new Date(pt.querySelector('time').textContent).getTime() : 0;
-            let pace = null, grade = 0;
+            let grade = 0;
+
+            if (i === 0 && hasTime) startMs = ms;
+            if (hasTime) endMs = ms;
+            
+            if (ele > maxEle) {
+                maxEle = ele;
+                summitMs = ms;
+            }
 
             if (prev) {
                 const d = calcDistMiles(prev.lat, prev.lon, lat, lon);
                 totalDistMiles += d;
                 if (ele > prev.ele) gainFeet += (ele - prev.ele);
                 if (d > 0) grade = ((ele - prev.ele) / (d * 5280)) * 100;
-
-                if (hasTime) {
-                    const dMs = ms - prev.ms;
-                    if (dMs > 0) {
-                        const calculatedMph = d / (dMs / 3600000);
-                        if (calculatedMph > 0.5) {
-                            moveMs += dMs;
-                            moveDistMiles += d;
-                            pace = 60 / calculatedMph;
-                        }
-                    }
-                }
             }
 
             if (i % 3 === 0 || i === trkpts.length - 1) {
                 rawData.push({
-                    dist: totalDistMiles, ele: ele, pace: pace, grade: grade,
+                    dist: totalDistMiles, ele: ele, grade: grade, ms: ms,
                     time: hasTime ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null
                 });
             }
@@ -201,7 +245,7 @@
         });
 
         if (hasTime) {
-            totalMs = new Date(trkpts[trkpts.length-1].querySelector('time').textContent) - new Date(trkpts[0].querySelector('time').textContent);
+            totalMs = endMs - startMs;
         }
 
         renderData();
