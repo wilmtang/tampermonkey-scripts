@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.7
+// @version      13.8
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -50,6 +50,24 @@
         canvasContainer.append(canvas);
         container.append(headerBox, canvasContainer);
         gpxLink.after(container);
+
+        canvas.addEventListener('dblclick', (e) => {
+            if (!chartInstance) return;
+            const activeElements = chartInstance.getElementsAtEventForMode(e, chartInstance.options.interaction.mode, chartInstance.options.interaction, true);
+            if (activeElements.length > 0) {
+                const datasetIndex = activeElements[0].datasetIndex;
+                const idx = activeElements[0].index;
+                const d = chartInstance.data.datasets[datasetIndex].data[idx]._raw;
+                if (d && d.lat !== undefined && d.lon !== undefined) {
+                    const text = `${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}`;
+                    navigator.clipboard.writeText(text).then(() => {
+                        const originalStats = stats.innerHTML;
+                        stats.innerHTML = `<span style="color: #2e8b57; font-weight: bold;">✓ Copied coordinates to clipboard: ${text}</span>`;
+                        setTimeout(() => { stats.innerHTML = originalStats; }, 2500);
+                    }).catch(err => console.error('Failed to copy', err));
+                }
+            }
+        });
 
         // 2. Mathematical & Formatting Helpers
         const toRad = x => x * Math.PI / 180;
@@ -220,7 +238,7 @@
                             display: true,
                             position: 'bottom',
                             labels: { usePointStyle: true, boxWidth: 8 },
-                            onClick: function(e, legendItem, legend) {
+                            onClick: function (e, legendItem, legend) {
                                 const index = legendItem.datasetIndex;
                                 const chart = legend.chart;
 
@@ -236,7 +254,7 @@
                                 } else {
                                     chart.options.interaction = { mode: 'nearest', intersect: true, axis: 'xy' };
                                 }
-                                chart.update();
+                                chart.update('none');
                             }
                         },
                         tooltip: {
