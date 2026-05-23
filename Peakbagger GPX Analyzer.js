@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.3
+// @version      13.4
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -147,7 +147,7 @@
                 data: eleDistData,
                 borderColor: '#fc4c02',
                 backgroundColor: 'rgba(252, 76, 2, 0.15)',
-                borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5
+                borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'x', pointRadius: 0, pointHoverRadius: 5, hitRadius: 30
             }];
 
             if (hasTime) {
@@ -156,7 +156,7 @@
                     data: eleTimeData,
                     borderColor: '#6ab0de',
                     backgroundColor: 'rgba(0, 127, 182, 0.15)',
-                    borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5
+                    borderWidth: 2, fill: true, tension: 0.2, yAxisID: 'y', xAxisID: 'xTime', pointRadius: 0, pointHoverRadius: 5, hitRadius: 30
                 });
             }
 
@@ -167,7 +167,7 @@
                 data: { datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
+                    interaction: { mode: 'nearest', intersect: true, axis: 'xy' },
                     onHover: (event, activeElements) => {
                         const mapIframe = document.querySelector('iframe[src*="MasterMap.aspx"], iframe[src*="mastermap.aspx"]');
                         const iframeWin = mapIframe ? mapIframe.contentWindow : null;
@@ -177,7 +177,8 @@
                             const idx = activeElements[0].index;
                             const dataArray = datasetIndex === 0 ? eleDistData : eleTimeData;
                             const d = dataArray[idx] ? dataArray[idx]._raw : null;
-                            const color = datasetIndex === 0 ? '#fc4c02' : '#6ab0de';
+                            const isRed = datasetIndex === 0;
+                            const fillColor = isRed ? '#FF0000' : '#0055FF';
 
                             if (d && d.lat !== undefined && d.lon !== undefined) {
                                 const L = iframeWin.L;
@@ -196,15 +197,16 @@
 
                                 if (!hoverMarker) {
                                     hoverMarker = L.circleMarker([d.lat, d.lon], {
-                                        radius: 7,
-                                        color: color,
-                                        fillColor: color,
-                                        fillOpacity: 0.8,
+                                        radius: 5,
+                                        color: '#FFFFFF',
+                                        fillColor: fillColor,
+                                        fillOpacity: 1,
+                                        opacity: 1,
                                         weight: 2
                                     }).addTo(map);
                                 } else {
                                     hoverMarker.setLatLng([d.lat, d.lon]);
-                                    hoverMarker.setStyle({ color: color, fillColor: color, opacity: 1, fillOpacity: 0.8 });
+                                    hoverMarker.setStyle({ color: '#FFFFFF', fillColor: fillColor, opacity: 1, fillOpacity: 1 });
                                 }
                             }
                         } else {
