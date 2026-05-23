@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.8
+// @version      13.9
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -37,11 +37,19 @@
 
         statsContainer.append(stats, subStats);
 
+        const controlsContainer = document.createElement('div');
+        Object.assign(controlsContainer.style, { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' });
+
         const unitSelect = document.createElement('select');
         Object.assign(unitSelect.style, { padding: '2px 6px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer', outline: 'none' });
         unitSelect.innerHTML = '<option value="imp">Imperial</option><option value="met">Metric</option>';
 
-        headerBox.append(statsContainer, unitSelect);
+        const hintText = document.createElement('div');
+        Object.assign(hintText.style, { fontSize: '0.8em', color: '#888', marginTop: '4px', fontStyle: 'italic' });
+        hintText.innerText = "Double-click point to copy coordinates";
+
+        controlsContainer.append(unitSelect, hintText);
+        headerBox.append(statsContainer, controlsContainer);
 
         const canvasContainer = document.createElement('div');
         Object.assign(canvasContainer.style, { position: 'relative', height: '300px', width: '100%' });
@@ -61,9 +69,8 @@
                 if (d && d.lat !== undefined && d.lon !== undefined) {
                     const text = `${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}`;
                     navigator.clipboard.writeText(text).then(() => {
-                        const originalStats = stats.innerHTML;
-                        stats.innerHTML = `<span style="color: #2e8b57; font-weight: bold;">✓ Copied coordinates to clipboard: ${text}</span>`;
-                        setTimeout(() => { stats.innerHTML = originalStats; }, 2500);
+                        hintText.innerHTML = `<span style="color: #2e8b57; font-weight: bold;">✓ Copied: ${text}</span>`;
+                        setTimeout(() => { hintText.innerText = "Double-click point to copy coordinates"; }, 2500);
                     }).catch(err => console.error('Failed to copy', err));
                 }
             }
