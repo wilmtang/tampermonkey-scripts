@@ -247,6 +247,11 @@
         }
 
         let prev = null;
+        let validPrevDistPt = null;
+        let eleLocalMin = null;
+        let recentPts = [];
+        const DIST_THRESHOLD_MILES = 5 / 1609.34; // 5 meters
+        const ELE_THRESHOLD_FEET = 3 * 3.28084;   // 3 meters
 
         trkpts.forEach((pt, i) => {
             const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
@@ -262,6 +267,11 @@
                 summitMs = ms;
             }
 
+            if (i === 0) {
+                eleLocalMin = ele;
+                validPrevDistPt = { lat, lon, ele };
+            }
+
             if (prev) {
                 if (hasTime && prev.day) {
                     const currDay = getRelativeDay(ms, startMs);
@@ -269,10 +279,35 @@
                         campingSpots.push({ day: prev.day, lat: prev.lat, lon: prev.lon });
                     }
                 }
-                const d = calcDistMiles(prev.lat, prev.lon, lat, lon);
-                totalDistMiles += d;
-                if (ele > prev.ele) gainFeet += (ele - prev.ele);
-                if (d > 0) grade = ((ele - prev.ele) / (d * 5280)) * 100;
+                
+                // 1. Distance Threshold
+                const dFromValid = calcDistMiles(validPrevDistPt.lat, validPrevDistPt.lon, lat, lon);
+                if (dFromValid >= DIST_THRESHOLD_MILES) {
+                    totalDistMiles += dFromValid;
+                    validPrevDistPt = { lat, lon, ele };
+                }
+
+                // 2. Elevation Hysteresis
+                if (ele < eleLocalMin) {
+                    eleLocalMin = ele;
+                } else if (ele - eleLocalMin >= ELE_THRESHOLD_FEET) {
+                    gainFeet += (ele - eleLocalMin);
+                    eleLocalMin = ele;
+                }
+                
+                // 3. Grade Moving Baseline
+                recentPts.push({ dist: totalDistMiles, ele: ele });
+                if (recentPts.length > 5) recentPts.shift();
+                
+                if (recentPts.length > 1) {
+                    const oldestPt = recentPts[0];
+                    const distDiff = totalDistMiles - oldestPt.dist;
+                    if (distDiff > 0) {
+                        grade = ((ele - oldestPt.ele) / (distDiff * 5280)) * 100;
+                    }
+                }
+            } else {
+                recentPts.push({ dist: 0, ele: ele });
             }
 
             if (i % 3 === 0 || i === trkpts.length - 1) {
