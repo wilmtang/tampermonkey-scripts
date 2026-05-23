@@ -53,6 +53,21 @@
         return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     };
     const fmtTime = ms => ms > 0 ? `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m` : '0m';
+    const getRelativeDay = (ms, startMs) => {
+        const startDate = new Date(startMs);
+        const currDate = new Date(ms);
+        const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const currMidnight = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
+        const diffMs = currMidnight - startMidnight;
+        return Math.round(diffMs / 86400000) + 1;
+    };
+    const formatTimeStr = (ms, startMs, isMultiDay) => {
+        const timeStr = new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        if (isMultiDay) {
+            return `Day ${getRelativeDay(ms, startMs)} ${timeStr}`;
+        }
+        return timeStr;
+    };
 
     // 3. Persistent Settings Handling (Memory)
     const STORAGE_KEY = 'pb_gpx_unit_pref';
@@ -74,12 +89,15 @@
     let rawData = [];
     let totalDistMiles = 0, gainFeet = 0, totalMs = 0, hasTime = false;
     let startMs = 0, endMs = 0, summitMs = 0, maxEle = -Infinity;
+    let campingSpots = [];
 
     // 4. Chart & UI Renderer Engine
     const renderData = () => {
         const isMet = unitSelect.value === 'met';
         const dMult = isMet ? 1.60934 : 1, eMult = isMet ? 0.3048 : 1;
         const dUnit = isMet ? 'km' : 'miles', eUnit = isMet ? 'm' : 'ft';
+
+        const isMultiDay = hasTime && (getRelativeDay(endMs, startMs) > 1);
 
         // Format Stats Bar
         let txt = `Interactive Stats: ${(totalDistMiles * dMult).toFixed(2)} ${dUnit} | ${(gainFeet * eMult).toFixed(0)} ${eUnit} gain`;
@@ -88,10 +106,15 @@
             if (summitMs > startMs) {
                 const timeToSummit = summitMs - startMs;
                 const timeBack = endMs - summitMs;
-                const formatTimeStr = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                let campingHtml = "";
+                if (campingSpots.length > 0) {
+                    const spotStrs = campingSpots.map(s => `Day ${s.day} (${s.lat.toFixed(5)}, ${s.lon.toFixed(5)})`).join(' | ');
+                    campingHtml = `<div style="color: #888; font-size: 0.95em; margin-top: 2px;">Possible Camping Spot: ${spotStrs}</div>`;
+                }
                 subStats.innerHTML = `
-                    <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs)} | Summit time: ${formatTimeStr(summitMs)} | Back to car: ${formatTimeStr(endMs)}</div>
+                    <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs, startMs, isMultiDay)} | Summit time: ${formatTimeStr(summitMs, startMs, isMultiDay)} | Back to car: ${formatTimeStr(endMs, startMs, isMultiDay)}</div>
                     <div style="color: #888; font-size: 0.95em;">Time to summit: ${fmtTime(timeToSummit)} | Time back: ${fmtTime(timeBack)}</div>
+                    ${campingHtml}
                 `;
             } else {
                 subStats.innerHTML = "";
@@ -159,7 +182,9 @@
                             },
                             afterBody: items => {
                                 const d = items[0].raw._raw;
-                                if (hasTime && d.time) return [`Time: ${d.time}`];
+                                if (hasTime && d.ms) {
+                                    return [`Time: ${formatTimeStr(d.ms, startMs, isMultiDay)}`];
+                                }
                                 return [];
                             }
                         }
@@ -185,7 +210,7 @@
                                 maxTicksLimit: 10, 
                                 color: '#007fb6',
                                 callback: function(v) { 
-                                    return new Date(v).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                                    return formatTimeStr(v, startMs, isMultiDay); 
                                 } 
                             },
                             grid: { drawOnChartArea: false }
@@ -238,6 +263,12 @@
             }
 
             if (prev) {
+                if (hasTime && prev.day) {
+                    const currDay = getRelativeDay(ms, startMs);
+                    if (currDay > prev.day) {
+                        campingSpots.push({ day: prev.day, lat: prev.lat, lon: prev.lon });
+                    }
+                }
                 const d = calcDistMiles(prev.lat, prev.lon, lat, lon);
                 totalDistMiles += d;
                 if (ele > prev.ele) gainFeet += (ele - prev.ele);
@@ -250,7 +281,7 @@
                     time: hasTime ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null
                 });
             }
-            prev = { lat, lon, ele, ms };
+            prev = { lat, lon, ele, ms, day: hasTime ? getRelativeDay(ms, startMs) : 1 };
         });
 
         if (hasTime) {
