@@ -212,6 +212,15 @@
         if (!trkpts.length) return stats.innerText = "No track points found.";
 
         hasTime = !!trkpts[0].querySelector('time');
+        
+        if (hasTime) {
+            trkpts.sort((a, b) => {
+                const timeA = a.querySelector('time') ? new Date(a.querySelector('time').textContent).getTime() : 0;
+                const timeB = b.querySelector('time') ? new Date(b.querySelector('time').textContent).getTime() : 0;
+                return timeA - timeB;
+            });
+        }
+
         let prev = null;
 
         trkpts.forEach((pt, i) => {

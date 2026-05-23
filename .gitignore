@@ -1,0 +1,7 @@
+node_modules/
+temp.html
+test.gpx
+parse_gpx.js
+package.json
+package-lock.json
+.DS_Store
