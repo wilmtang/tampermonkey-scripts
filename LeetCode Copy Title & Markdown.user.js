@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
-// @author       You
+// @author       wilmtang
 // @match        https://leetcode.com/problems/*/
 // @match        https://leetcode.com/problems/*/description/
 // @match        https://leetcode.com/problems/*/*
@@ -18,11 +18,10 @@
     let lastInjectedTitle = null;
     let lastPathname = null;
 
-    // --- NEW in 2.0: Prevent Native Anchor Dragging ---
+    // --- Selectability CSS & Event Blockers ---
     function makeTitleSelectable() {
         if (document.getElementById('lc-selectable-style')) return;
         
-        // 1. Force CSS rules on the title AND all its child elements
         const style = document.createElement('style');
         style.id = 'lc-selectable-style';
         style.innerHTML = `
@@ -38,32 +37,41 @@
         `;
         document.head.appendChild(style);
 
-        // 2. Intercept and block both React's drag cancel AND the browser's native link dragging
         const stopDragCancel = function(e) {
             let target = e.target;
             while (target && target !== document.body) {
                 if (target.classList && target.classList.contains('text-title-large')) {
-                    if (e.type === 'dragstart') {
-                        // This stops the browser from showing the "ghost link" image
-                        e.preventDefault(); 
-                    } else {
-                        // This stops React from canceling the text selection
-                        e.stopPropagation(); 
-                    }
+                    if (e.type === 'dragstart') e.preventDefault(); 
+                    else e.stopPropagation(); 
                     break;
                 }
                 target = target.parentNode;
             }
         };
 
-        // Listen during the capture phase (true) to intercept before other scripts
         document.addEventListener('mousedown', stopDragCancel, true);
         document.addEventListener('selectstart', stopDragCancel, true);
-        document.addEventListener('dragstart', stopDragCancel, true); // Added dragstart listener
+        document.addEventListener('dragstart', stopDragCancel, true);
     }
 
-    // Run immediately to ensure text is selectable as soon as page loads
     makeTitleSelectable();
+
+    // --- NEW in 2.1: Destroy Link Behavior ---
+    // This stops the browser from treating the middle of the text as a draggable URL
+    function neutralizeLink(el) {
+        if (!el) return;
+        
+        // If the element itself is the anchor tag
+        if (el.tagName === 'A') {
+            el.removeAttribute('href');
+        } 
+        
+        // If the element contains an anchor tag
+        const childA = el.querySelector('a');
+        if (childA) {
+            childA.removeAttribute('href');
+        }
+    }
 
 
     // --- Helper: Creates the standardized buttons ---
@@ -161,16 +169,10 @@
             const cleanPathname = window.location.pathname.split('/description')[0] + '/description/';
             const url = window.location.origin + cleanPathname;
 
-            // 1. Convert DOM HTML to Markdown using Turndown
             let mdContent = convertToMarkdown(descEl.innerHTML);
-
-            // 2. Clean up invisible zero-width spaces LeetCode sometimes uses
             mdContent = mdContent.replace(/\u200B/g, '');
-
-            // 3. Nest the ENTIRE problem description inside a blockquote
             mdContent = mdContent.split('\n').map(line => '> ' + line).join('\n');
 
-            // 4. Format: Title -> URL on next line -> Content (no gap) -> Trailing newline
             const finalMd = `# ${titleText}\n${url}\n${mdContent}\n`;
 
             copyToClipboard(finalMd);
@@ -237,11 +239,9 @@
 
     // --- Ultra-Aggressive Element Selectors ---
     function findTitleEl() {
-        // 1. Direct class match for modern LeetCode UI
         let el = document.querySelector('.text-title-large a') || document.querySelector('.text-title-large');
         if (el) return el;
 
-        // 2. Fallback to older/alternative UI layouts
         const selectors = [
             'div[data-cy="question-title"]',
             'h1[data-cy="question-title"]',
@@ -253,11 +253,9 @@
             if (el) return el;
         }
 
-        // 3. Failsafe: Find ANY H1 or Link that starts with a number and a dot
         const allHeadings = document.querySelectorAll('h1, a, div');
         for (const elem of allHeadings) {
             if (/^\d+\.\s/.test(elem.textContent.trim())) {
-                // Ensure it's roughly title-sized to avoid grabbing descriptions by accident
                 if (elem.tagName === 'H1' || elem.classList.contains('text-title-large')) {
                     return elem;
                 }
@@ -287,19 +285,18 @@
 
         const titleEl = findTitleEl();
         if (!titleEl) return;
+        
+        // Strip the link behavior so the middle is selectable
+        neutralizeLink(titleEl);
 
         const titleText = titleEl.textContent.trim();
         if (!titleText) return;
 
         let container = document.getElementById(CONTAINER_ID);
 
-        // If buttons are already there and title hasn't changed, ignore
         if (container && lastInjectedTitle === titleText) return;
-
-        // Cleanup old instance on SPA nav
         if (container) container.remove();
 
-        // Create flex container so both buttons sit nicely next to each other
         container = document.createElement('div');
         container.id = CONTAINER_ID;
         container.style.cssText = `
@@ -326,7 +323,7 @@
         if (location.pathname !== lastPathname) {
             lastInjectedTitle = null;
             lastPathname = location.pathname;
-            injectButtons(); // Try immediately on route change
+            injectButtons(); 
         }
     }
 
@@ -337,11 +334,9 @@
     };
     window.addEventListener('popstate', onUrlChange);
 
-    // MutationObserver handles lazy DOM rendering
     const observer = new MutationObserver(() => injectButtons());
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Staggered loading failsafe (catches slow React renders)
     window.addEventListener('load', injectButtons);
     setTimeout(injectButtons, 1000);
     setTimeout(injectButtons, 2500);
