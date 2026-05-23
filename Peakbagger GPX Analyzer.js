@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      12.1
+// @version      13.1
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
 // @match        https://www.peakbagger.com/climber/Ascent.aspx*
+// @match        https://www.peakbagger.com/map/MasterMap.aspx*
+// @match        https://www.peakbagger.com/map/mastermap.aspx*
+// @run-at       document-start
 // @require      https://cdn.jsdelivr.net/npm/chart.js
 // @grant        none
 // ==/UserScript==
@@ -13,9 +16,88 @@
 (async () => {
     'use strict';
 
-    // 1. Locate GPX link and build UI
-    const gpxLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent.includes('Download this GPS track'));
-    if (!gpxLink) return;
+    const isMapPage = window.location.pathname.toLowerCase().includes('mastermap.aspx');
+
+    if (isMapPage) {
+        const drawOnMap = (map) => {
+            if (map._hasRedCircle) return;
+            map._hasRedCircle = true;
+            
+            // Wait for the tracks to be loaded and rendered on the map
+            setTimeout(() => {
+                let polyline = null;
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                        polyline = layer;
+                    }
+                });
+                
+                if (polyline) {
+                    let latlngs = polyline.getLatLngs();
+                    if (latlngs && latlngs.length > 0) {
+                        let startPt = latlngs[0];
+                        while (Array.isArray(startPt) && startPt.length > 0 && typeof startPt[0] !== 'number') {
+                            startPt = startPt[0];
+                        }
+                        
+                        if (startPt) {
+                            let lat = startPt.lat !== undefined ? startPt.lat : startPt[0];
+                            let lng = startPt.lng !== undefined ? startPt.lng : (startPt.lng || startPt[1]);
+                            
+                            if (lat !== undefined && lng !== undefined) {
+                                L.circle([lat, lng], {
+                                    radius: 200, // 200 meters (big circle)
+                                    color: '#ff0000',
+                                    fillColor: '#ff0000',
+                                    fillOpacity: 0.4,
+                                    weight: 2
+                                }).addTo(map);
+                            }
+                        }
+                    }
+                }
+            }, 1500); // 1.5 second delay to ensure track is drawn first
+        };
+
+        // Hook 1: Intercept L.Map.prototype.initialize (for early loads)
+        const interceptInterval = setInterval(() => {
+            if (typeof L !== 'undefined' && L.Map && L.Map.prototype) {
+                clearInterval(interceptInterval);
+                const originalInit = L.Map.prototype.initialize;
+                L.Map.prototype.initialize = function (...args) {
+                    originalInit.apply(this, args);
+                    drawOnMap(this);
+                };
+            }
+        }, 50);
+
+        // Hook 2: Scan window for L.Map (fallback for late loads/document-idle)
+        const scanForMap = () => {
+            if (typeof L !== 'undefined') {
+                if (window.mapsPlaceholder && window.mapsPlaceholder instanceof L.Map) {
+                    drawOnMap(window.mapsPlaceholder);
+                }
+                for (let key in window) {
+                    try {
+                        if (window[key] && window[key] instanceof L.Map) {
+                            drawOnMap(window[key]);
+                        }
+                    } catch (e) {}
+                }
+            }
+        };
+
+        // Scan multiple times to catch late initialization
+        setTimeout(scanForMap, 500);
+        setTimeout(scanForMap, 1500);
+        setTimeout(scanForMap, 3000);
+        return;
+    }
+
+    const initChart = async () => {
+        // 1. Locate GPX link and build UI
+        const gpxLink = Array.from(document.querySelectorAll('a')).find(a => a.textContent.includes('Download this GPS track'));
+        if (!gpxLink) return;
 
     const container = document.createElement('div');
     Object.assign(container.style, { marginTop: '15px', padding: '10px', border: '1px solid #ccc', background: '#fafafa', borderRadius: '5px', maxWidth: '800px' });
@@ -329,5 +411,12 @@
     } catch (e) {
         stats.innerText = "Error parsing GPX file.";
         console.error(e);
+    }
+    };
+
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', initChart);
+    } else {
+        initChart();
     }
 })();
