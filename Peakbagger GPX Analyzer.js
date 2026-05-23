@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.1
+// @version      13.2
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -245,14 +245,18 @@
             data: { datasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+                interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
                 onHover: (event, activeElements) => {
                     const mapIframe = document.querySelector('iframe[src*="MasterMap.aspx"], iframe[src*="mastermap.aspx"]');
                     const iframeWin = mapIframe ? mapIframe.contentWindow : null;
                     
                     if (activeElements.length > 0 && iframeWin && iframeWin.mapsPlaceholder && iframeWin.L) {
+                        const datasetIndex = activeElements[0].datasetIndex;
                         const idx = activeElements[0].index;
-                        const d = rawData[idx];
+                        const dataArray = datasetIndex === 0 ? eleDistData : eleTimeData;
+                        const d = dataArray[idx] ? dataArray[idx]._raw : null;
+                        const color = datasetIndex === 0 ? '#fc4c02' : '#6ab0de';
+                        
                         if (d && d.lat !== undefined && d.lon !== undefined) {
                             const L = iframeWin.L;
                             const map = iframeWin.mapsPlaceholder;
@@ -271,14 +275,14 @@
                             if (!hoverMarker) {
                                 hoverMarker = L.circleMarker([d.lat, d.lon], {
                                     radius: 7,
-                                    color: '#fc4c02',
-                                    fillColor: '#fc4c02',
+                                    color: color,
+                                    fillColor: color,
                                     fillOpacity: 0.8,
                                     weight: 2
                                 }).addTo(map);
                             } else {
                                 hoverMarker.setLatLng([d.lat, d.lon]);
-                                hoverMarker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+                                hoverMarker.setStyle({ color: color, fillColor: color, opacity: 1, fillOpacity: 0.8 });
                             }
                         }
                     } else {
