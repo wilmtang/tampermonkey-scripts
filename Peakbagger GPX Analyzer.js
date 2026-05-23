@@ -173,6 +173,7 @@
     let totalDistMiles = 0, gainFeet = 0, totalMs = 0, hasTime = false;
     let startMs = 0, endMs = 0, summitMs = 0, maxEle = -Infinity;
     let campingSpots = [];
+    let hoverMarker = null;
 
     // 4. Chart & UI Renderer Engine
     const renderData = () => {
@@ -245,6 +246,47 @@
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+                onHover: (event, activeElements) => {
+                    const mapIframe = document.querySelector('iframe[src*="MasterMap.aspx"], iframe[src*="mastermap.aspx"]');
+                    const iframeWin = mapIframe ? mapIframe.contentWindow : null;
+                    
+                    if (activeElements.length > 0 && iframeWin && iframeWin.mapsPlaceholder && iframeWin.L) {
+                        const idx = activeElements[0].index;
+                        const d = rawData[idx];
+                        if (d && d.lat !== undefined && d.lon !== undefined) {
+                            const L = iframeWin.L;
+                            const map = iframeWin.mapsPlaceholder;
+                            
+                            // Recreate marker if it doesn't match the current map instance (e.g. iframe reloaded)
+                            if (hoverMarker) {
+                                try {
+                                    if (hoverMarker._map !== map) {
+                                        hoverMarker = null;
+                                    }
+                                } catch (e) {
+                                    hoverMarker = null;
+                                }
+                            }
+                            
+                            if (!hoverMarker) {
+                                hoverMarker = L.circleMarker([d.lat, d.lon], {
+                                    radius: 7,
+                                    color: '#fc4c02',
+                                    fillColor: '#fc4c02',
+                                    fillOpacity: 0.8,
+                                    weight: 2
+                                }).addTo(map);
+                            } else {
+                                hoverMarker.setLatLng([d.lat, d.lon]);
+                                hoverMarker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+                            }
+                        }
+                    } else {
+                        if (hoverMarker) {
+                            hoverMarker.setStyle({ opacity: 0, fillOpacity: 0 });
+                        }
+                    }
+                },
                 plugins: {
                     legend: {
                         display: true,
@@ -395,7 +437,7 @@
 
             if (i % 3 === 0 || i === trkpts.length - 1) {
                 rawData.push({
-                    dist: totalDistMiles, ele: ele, grade: grade, ms: ms,
+                    dist: totalDistMiles, ele: ele, grade: grade, ms: ms, lat: lat, lon: lon,
                     time: hasTime ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
                 });
             }
