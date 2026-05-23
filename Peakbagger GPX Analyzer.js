@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    http://tampermonkey.net/
-// @version      13.6
+// @version      13.7
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
@@ -219,7 +219,25 @@
                         legend: {
                             display: true,
                             position: 'bottom',
-                            labels: { usePointStyle: true, boxWidth: 8 }
+                            labels: { usePointStyle: true, boxWidth: 8 },
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.datasetIndex;
+                                const chart = legend.chart;
+
+                                chart.setDatasetVisibility(index, !chart.isDatasetVisible(index));
+
+                                let visibleCount = 0;
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    if (chart.isDatasetVisible(i)) visibleCount++;
+                                });
+
+                                if (visibleCount === 1) {
+                                    chart.options.interaction = { mode: 'index', intersect: false };
+                                } else {
+                                    chart.options.interaction = { mode: 'nearest', intersect: true, axis: 'xy' };
+                                }
+                                chart.update();
+                            }
                         },
                         tooltip: {
                             filter: (tooltipItem, index) => index === 0,

@@ -68,3 +68,7 @@ When plotting two distinct X-axes (Distance vs. Time) on the same Y-axis canvas,
 ### Disappearing Focus Boundary
 If the user moves their cursor far away from the charted lines (into the whitespace of the canvas), the tooltip and map dot should cleanly disappear instead of permanently locking to the edge of the graph.
 - **The Solution:** We set `hitRadius: 40` on the datasets and `intersect: true` on the interaction engine. This creates an exact 40-pixel interactive boundary around the lines. The moment the cursor exits this 40-pixel radius, the hover focus is natively destroyed, instantly hiding the tooltip and dynamically fading out the Leaflet map dot.
+
+### Dynamic Interaction Mode
+When both the Distance and Time lines are enabled, the chart relies on exact 2D proximity (`mode: 'nearest', axis: 'xy'`) to determine focus. However, if the user disables one of the lines via the legend, enforcing a strict hit radius becomes unnecessary and restrictive.
+- **The Solution:** We override the default legend `onClick` handler. When only **one line** is visible, the script dynamically switches the chart interaction to `{ mode: 'index', intersect: false }`. This disables the strict Y-axis proximity rules, allowing the user to seamlessly scrub along the X-axis from anywhere within the chart's vertical space. Toggling both lines back on instantly restores the strict 2D xy-proximity mode.
