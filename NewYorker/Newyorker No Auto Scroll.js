@@ -4,6 +4,8 @@
 // @version      1.1
 // @description  Prevents the New Yorker page from scrolling back to the audio player when media keys are pressed.
 // @author       You
+// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/NewYorker/Newyorker%20No%20Auto%20Scroll.js
+// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/NewYorker/Newyorker%20No%20Auto%20Scroll.js
 // @match        *://*.newyorker.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=newyorker.com
 // @grant        none

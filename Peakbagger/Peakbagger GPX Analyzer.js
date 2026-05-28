@@ -4,6 +4,8 @@
 // @version      13.9
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       You
+// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Peakbagger/Peakbagger%20GPX%20Analyzer.js
+// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Peakbagger/Peakbagger%20GPX%20Analyzer.js
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
 // @match        https://www.peakbagger.com/climber/Ascent.aspx*
 // @run-at       document-start

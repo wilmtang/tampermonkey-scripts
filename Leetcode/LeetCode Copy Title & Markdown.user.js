@@ -4,6 +4,8 @@
 // @version      2.1
 // @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
 // @author       wilmtang
+// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20&%20Markdown.user.js
+// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20&%20Markdown.user.js
 // @match        https://leetcode.com/problems/*/
 // @match        https://leetcode.com/problems/*/description/
 // @match        https://leetcode.com/problems/*/*
