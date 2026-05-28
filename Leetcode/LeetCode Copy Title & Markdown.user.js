@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
 // @author       wilmtang
 // @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20&%20Markdown.user.js
@@ -134,6 +134,10 @@
         }
     }
 
+    function stripProblemNumber(title) {
+        return title.replace(/^\d+\.\s*/, '').trim();
+    }
+
     // --- Button 1: Copy Title ---
     function createCopyTitleButton() {
         const btn = createButtonBase('Copy title to clipboard', '📋');
@@ -141,7 +145,7 @@
 
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const currentTitle = (findTitleEl()?.textContent ?? '').trim();
+            const currentTitle = stripProblemNumber((findTitleEl()?.textContent ?? '').trim());
             if (!currentTitle) return;
 
             copyToClipboard(currentTitle);
