@@ -1,5 +1,8 @@
 # Peakbagger GPX Analyzer
 
+[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-pending-lightgrey)](https://greasyfork.org/en/users/1606863-wilmtang)
+[![Install from GitHub](https://img.shields.io/badge/install-GitHub-blue)](https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Peakbagger/Peakbagger%20GPX%20Analyzer.user.js)
+
 A Tampermonkey userscript that automatically injects a rich, interactive elevation chart and advanced route metrics into [Peakbagger](https://www.peakbagger.com/) ascent pages.
 
 ## How It Works

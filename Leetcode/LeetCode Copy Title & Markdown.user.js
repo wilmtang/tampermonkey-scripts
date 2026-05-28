@@ -1,9 +1,12 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/wilmtang/tampermonkey-scripts
 // @version      2.2
 // @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
 // @author       wilmtang
+// @license      MIT
+// @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Leetcode
+// @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20&%20Markdown.user.js
 // @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20&%20Markdown.user.js
 // @match        https://leetcode.com/problems/*/

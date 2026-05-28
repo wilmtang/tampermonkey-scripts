@@ -1,4 +1,9 @@
-### Conversation Summary: The New Yorker Audio Player Scrolling Bug
+# Fix New Yorker Audio Player Scroll
+
+[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-pending-lightgrey)](https://greasyfork.org/en/users/1606863-wilmtang)
+[![Install from GitHub](https://img.shields.io/badge/install-GitHub-blue)](https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/NewYorker/Newyorker%20No%20Auto%20Scroll.user.js)
+
+## The New Yorker Audio Player Scrolling Bug
 
 **The Problem:**
 When reading an article on The New Yorker that contains an embedded audio player, pressing a hardware media key (Play/Pause) causes the webpage to forcefully scroll the viewport back to the audio player.
