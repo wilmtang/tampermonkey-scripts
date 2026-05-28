@@ -1,7 +1,7 @@
 # LeetCode Copy Title & Markdown
 
-[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-pending-lightgrey)](https://greasyfork.org/en/users/1606863-wilmtang)
-[![Install from GitHub](https://img.shields.io/badge/install-GitHub-blue)](https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Leetcode/LeetCode%20Copy%20Title%20%26%20Markdown.user.js)
+[![Greasy Fork installs](https://img.shields.io/badge/dynamic/json?label=users&query=$.total_installs&url=https%3A%2F%2Fgreasyfork.org%2Fen%2Fscripts%2F580093.json&color=2ea44f)](https://greasyfork.org/en/scripts/580093-leetcode-copy-title-markdown)
+[![Install from Greasy Fork](https://img.shields.io/badge/install-Greasy%20Fork-blue)](https://update.greasyfork.org/scripts/580093/LeetCode%20Copy%20Title%20%20Markdown.user.js)
 
 A userscript that adds copy helpers to LeetCode problem pages.
 

@@ -1,7 +1,7 @@
 # Fix New Yorker Audio Player Scroll
 
-[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-pending-lightgrey)](https://greasyfork.org/en/users/1606863-wilmtang)
-[![Install from GitHub](https://img.shields.io/badge/install-GitHub-blue)](https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/NewYorker/Newyorker%20No%20Auto%20Scroll.user.js)
+[![Greasy Fork installs](https://img.shields.io/badge/dynamic/json?label=users&query=$.total_installs&url=https%3A%2F%2Fgreasyfork.org%2Fen%2Fscripts%2F580092.json&color=2ea44f)](https://greasyfork.org/en/scripts/580092-fix-new-yorker-audio-player-scroll)
+[![Install from Greasy Fork](https://img.shields.io/badge/install-Greasy%20Fork-blue)](https://update.greasyfork.org/scripts/580092/Fix%20New%20Yorker%20Audio%20Player%20Scroll.user.js)
 
 ## The New Yorker Audio Player Scrolling Bug
 

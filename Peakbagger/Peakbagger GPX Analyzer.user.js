@@ -7,12 +7,12 @@
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Peakbagger
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
-// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Peakbagger/Peakbagger%20GPX%20Analyzer.user.js
-// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/Peakbagger/Peakbagger%20GPX%20Analyzer.user.js
+// @updateURL    https://update.greasyfork.org/scripts/580091/Peakbagger%20GPX%20Analyzer.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/580091/Peakbagger%20GPX%20Analyzer.user.js
 // @match        https://www.peakbagger.com/climber/ascent.aspx*
 // @match        https://www.peakbagger.com/climber/Ascent.aspx*
 // @run-at       document-start
-// @require      https://cdn.jsdelivr.net/npm/chart.js
+// @require      https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js
 // @grant        none
 // ==/UserScript==
 
