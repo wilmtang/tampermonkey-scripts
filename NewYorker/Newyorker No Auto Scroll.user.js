@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fix New Yorker Audio Player Scroll
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.1
+// @version      1.2
 // @description  Prevents the New Yorker page from scrolling back to the audio player when media keys are pressed.
 // @author       wilmtang
 // @license      MIT
@@ -10,6 +10,7 @@
 // @updateURL    https://update.greasyfork.org/scripts/580092/Fix%20New%20Yorker%20Audio%20Player%20Scroll.meta.js
 // @downloadURL  https://update.greasyfork.org/scripts/580092/Fix%20New%20Yorker%20Audio%20Player%20Scroll.user.js
 // @match        *://*.newyorker.com/*
+// @match        *://newyorker.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=newyorker.com
 // @grant        none
 // ==/UserScript==
