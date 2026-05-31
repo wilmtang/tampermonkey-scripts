@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      13.9
+// @version      13.10
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       wilmtang
 // @license      MIT
@@ -9,8 +9,10 @@
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/580091/Peakbagger%20GPX%20Analyzer.meta.js
 // @downloadURL  https://update.greasyfork.org/scripts/580091/Peakbagger%20GPX%20Analyzer.user.js
-// @match        https://www.peakbagger.com/climber/ascent.aspx*
-// @match        https://www.peakbagger.com/climber/Ascent.aspx*
+// @match        *://www.peakbagger.com/climber/ascent.aspx*
+// @match        *://www.peakbagger.com/climber/Ascent.aspx*
+// @match        *://peakbagger.com/climber/ascent.aspx*
+// @match        *://peakbagger.com/climber/Ascent.aspx*
 // @run-at       document-start
 // @require      https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js
 // @grant        none
