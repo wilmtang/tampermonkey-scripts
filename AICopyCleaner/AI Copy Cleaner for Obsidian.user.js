@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         AI Copy Cleaner for Obsidian
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.1
+// @version      0.1.2
 // @description  Copy Gemini/ChatGPT answers as tight Markdown/HTML so Obsidian does not add blank lines inside lists.
 // @author       wilmtang
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/AICopyCleaner
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
+// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/AICopyCleaner/AI%20Copy%20Cleaner%20for%20Obsidian.user.js
+// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/AICopyCleaner/AI%20Copy%20Cleaner%20for%20Obsidian.user.js
 // @match        https://gemini.google.com/*
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
