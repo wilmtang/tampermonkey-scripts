@@ -49,6 +49,8 @@ It copies the current selection through the same cleaner even if a page-specific
 
 ## Current Scope
 
-The converter preserves common AI answer formatting: headings, paragraphs, bold, italic, inline code, code blocks, links, blockquotes, ordered/unordered lists, nested lists, and simple tables.
+The converter preserves common AI answer formatting: headings, paragraphs, bold, italic, inline code, code blocks, links, blockquotes, ordered/unordered lists, nested lists, simple tables, and Markdown math equations.
+
+For equations, it prefers embedded TeX/LaTeX annotations when the AI page provides them, and falls back to reading KaTeX/MathJax-style rendered math so inline equations paste as `$...$` and display equations paste as `$$...$$`.
 
 It intentionally skips page controls such as buttons, icons, inputs, scripts, and SVGs so copied answers do not bring UI text into Obsidian.

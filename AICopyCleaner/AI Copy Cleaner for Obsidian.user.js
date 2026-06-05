@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Copy Cleaner for Obsidian
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.0
+// @version      0.1.1
 // @description  Copy Gemini/ChatGPT answers as tight Markdown/HTML so Obsidian does not add blank lines inside lists.
 // @author       wilmtang
 // @license      MIT
@@ -60,6 +60,121 @@
     'STYLE',
     'SVG',
     'TEXTAREA',
+  ]);
+
+  const MATH_SELECTOR = [
+    '.katex',
+    '.katex-display',
+    '.katex-html',
+    '.MathJax',
+    '.MathJax_Display',
+    'mjx-container',
+    'math',
+    'annotation',
+    'script[type^="math/tex"]',
+    '[data-latex]',
+    '[data-tex]',
+    '[data-math]',
+    '[data-original-tex]',
+  ].join(',');
+
+  const TEX_DATA_ATTRIBUTES = ['data-latex', 'data-tex', 'data-math', 'data-original-tex'];
+
+  const MATH_SYMBOLS = new Map([
+    ['≤', '\\le'],
+    ['≥', '\\ge'],
+    ['≠', '\\ne'],
+    ['≈', '\\approx'],
+    ['≡', '\\equiv'],
+    ['×', '\\times'],
+    ['÷', '\\div'],
+    ['±', '\\pm'],
+    ['∓', '\\mp'],
+    ['·', '\\cdot'],
+    ['−', '-'],
+    ['∞', '\\infty'],
+    ['∈', '\\in'],
+    ['∉', '\\notin'],
+    ['⊂', '\\subset'],
+    ['⊆', '\\subseteq'],
+    ['⊃', '\\supset'],
+    ['⊇', '\\supseteq'],
+    ['∪', '\\cup'],
+    ['∩', '\\cap'],
+    ['∑', '\\sum'],
+    ['∏', '\\prod'],
+    ['∫', '\\int'],
+    ['√', '\\sqrt'],
+    ['∂', '\\partial'],
+    ['∇', '\\nabla'],
+    ['∀', '\\forall'],
+    ['∃', '\\exists'],
+    ['¬', '\\neg'],
+    ['∧', '\\land'],
+    ['∨', '\\lor'],
+    ['→', '\\to'],
+    ['←', '\\leftarrow'],
+    ['↔', '\\leftrightarrow'],
+    ['⇒', '\\Rightarrow'],
+    ['⇐', '\\Leftarrow'],
+    ['⇔', '\\Leftrightarrow'],
+    ['α', '\\alpha'],
+    ['β', '\\beta'],
+    ['γ', '\\gamma'],
+    ['δ', '\\delta'],
+    ['ε', '\\epsilon'],
+    ['θ', '\\theta'],
+    ['λ', '\\lambda'],
+    ['μ', '\\mu'],
+    ['π', '\\pi'],
+    ['ρ', '\\rho'],
+    ['σ', '\\sigma'],
+    ['τ', '\\tau'],
+    ['φ', '\\phi'],
+    ['ω', '\\omega'],
+    ['Γ', '\\Gamma'],
+    ['Δ', '\\Delta'],
+    ['Θ', '\\Theta'],
+    ['Λ', '\\Lambda'],
+    ['Π', '\\Pi'],
+    ['Σ', '\\Sigma'],
+    ['Φ', '\\Phi'],
+    ['Ω', '\\Omega'],
+  ]);
+
+  const KATEX_OPERATOR_NAMES = new Set([
+    'arccos',
+    'arcsin',
+    'arctan',
+    'arg',
+    'cos',
+    'cosh',
+    'cot',
+    'coth',
+    'csc',
+    'deg',
+    'det',
+    'dim',
+    'exp',
+    'gcd',
+    'hom',
+    'inf',
+    'ker',
+    'lg',
+    'lim',
+    'liminf',
+    'limsup',
+    'ln',
+    'log',
+    'max',
+    'min',
+    'Pr',
+    'sec',
+    'sin',
+    'sinh',
+    'sup',
+    'tan',
+    'tanh',
   ]);
 
   document.addEventListener('copy', cleanCopy, true);
@@ -147,7 +262,13 @@
   }
 
   function nodeToMarkdown(node, context) {
-    if (!node || shouldSkip(node)) return '';
+    if (!node) return '';
+
+    if (isMathElement(node)) {
+      return renderMathMarkdown(node, context);
+    }
+
+    if (shouldSkip(node)) return '';
 
     if (node.nodeType === Node.TEXT_NODE) {
       const normalized = normalizeInlineText(node.textContent || '');
@@ -236,7 +357,7 @@
     const nestedBlocks = [];
 
     Array.from(itemNode.childNodes).forEach((child) => {
-      if (shouldSkip(child)) return;
+      if (shouldSkip(child) && !isMathElement(child)) return;
 
       if (child.nodeType === Node.ELEMENT_NODE && (child.tagName === 'UL' || child.tagName === 'OL')) {
         nestedBlocks.push(renderList(child, child.tagName === 'OL', { ...context, tight: true }));
@@ -304,7 +425,13 @@
   }
 
   function nodeToHtml(node, context) {
-    if (!node || shouldSkip(node)) return '';
+    if (!node) return '';
+
+    if (isMathElement(node)) {
+      return escapeHtml(renderMathMarkdown(node, context));
+    }
+
+    if (shouldSkip(node)) return '';
 
     if (node.nodeType === Node.TEXT_NODE) {
       return escapeHtml(node.textContent || '');
@@ -376,6 +503,322 @@
     return nodesToHtml(Array.from(node.childNodes), context);
   }
 
+  function renderMathMarkdown(node, context) {
+    const math = extractMath(node);
+    if (!math || !math.tex) return '';
+
+    return wrapMathMarkdown(math.tex, math.display, context);
+  }
+
+  function extractMath(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const display = isDisplayMath(node);
+    const directSource = getDirectTexSource(node);
+    if (directSource) return { tex: directSource, display };
+
+    const annotation = findTexAnnotation(node);
+    if (annotation) return { tex: annotation, display };
+
+    const mathMl = findMathMlTex(node);
+    if (mathMl) return { tex: mathMl, display };
+
+    const katex = findKatexTex(node);
+    if (katex) return { tex: katex, display };
+
+    const ariaTex = findAriaMathTex(node);
+    if (ariaTex) return { tex: ariaTex, display };
+
+    return null;
+  }
+
+  function getDirectTexSource(node) {
+    if (node.tagName.toUpperCase() === 'SCRIPT' && /^math\/tex/i.test(node.getAttribute('type') || '')) {
+      return normalizeTexSource(node.textContent || '');
+    }
+
+    for (const attribute of TEX_DATA_ATTRIBUTES) {
+      const value = node.getAttribute(attribute);
+      if (value) return normalizeTexSource(value);
+    }
+
+    return '';
+  }
+
+  function findTexAnnotation(node) {
+    const annotations = [];
+
+    if (node.tagName.toUpperCase() === 'ANNOTATION') {
+      annotations.push(node);
+    }
+
+    annotations.push(...Array.from(node.querySelectorAll('annotation')));
+
+    const texAnnotation = annotations.find((annotation) => {
+      const encoding = (annotation.getAttribute('encoding') || '').toLowerCase();
+      return encoding === 'application/x-tex' || encoding === 'application/x-latex';
+    });
+
+    return texAnnotation ? normalizeTexSource(texAnnotation.textContent || '') : '';
+  }
+
+  function findMathMlTex(node) {
+    const mathNode = node.tagName.toUpperCase() === 'MATH' ? node : node.querySelector('math');
+    if (!mathNode) return '';
+
+    const altText = mathNode.getAttribute('alttext') || mathNode.getAttribute('alt');
+    if (altText) return normalizeTexSource(altText);
+
+    return cleanupTex(renderMathMlNode(mathNode));
+  }
+
+  function findKatexTex(node) {
+    const katexNode = node.classList.contains('katex') ? node : node.querySelector('.katex');
+    const katexHtml =
+      (node.classList.contains('katex-html') && node) ||
+      (katexNode && katexNode.querySelector('.katex-html')) ||
+      node.querySelector('.katex-html');
+
+    if (!katexNode && !katexHtml) return '';
+
+    return cleanupTex(renderKatexChildren(katexHtml || katexNode));
+  }
+
+  function findAriaMathTex(node) {
+    if (!isKnownMathShell(node)) return '';
+
+    const ariaLabel = node.getAttribute('aria-label');
+    return ariaLabel ? normalizeTexSource(ariaLabel) : '';
+  }
+
+  function renderMathMlNode(node) {
+    if (!node) return '';
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return mapMathText(node.textContent || '');
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const tag = node.tagName.toLowerCase();
+    const children = Array.from(node.childNodes);
+    const childTex = () => cleanupTex(children.map(renderMathMlNode).join(''));
+
+    if (tag === 'annotation') return '';
+    if (tag === 'mfrac') return `\\frac{${renderMathMlNode(children[0])}}{${renderMathMlNode(children[1])}}`;
+    if (tag === 'msqrt') return `\\sqrt{${childTex()}}`;
+    if (tag === 'mroot') return `\\sqrt[${renderMathMlNode(children[1])}]{${renderMathMlNode(children[0])}}`;
+    if (tag === 'msup') return `${renderMathMlNode(children[0])}^{${renderMathMlNode(children[1])}}`;
+    if (tag === 'msub') return `${renderMathMlNode(children[0])}_{${renderMathMlNode(children[1])}}`;
+    if (tag === 'msubsup') {
+      return `${renderMathMlNode(children[0])}_{${renderMathMlNode(children[1])}}^{${renderMathMlNode(children[2])}}`;
+    }
+    if (tag === 'mover') return `${renderMathMlNode(children[0])}^{${renderMathMlNode(children[1])}}`;
+    if (tag === 'munder') return `${renderMathMlNode(children[0])}_{${renderMathMlNode(children[1])}}`;
+    if (tag === 'munderover') {
+      return `${renderMathMlNode(children[0])}_{${renderMathMlNode(children[1])}}^{${renderMathMlNode(children[2])}}`;
+    }
+
+    return childTex();
+  }
+
+  function renderKatexNode(node) {
+    if (!node) return '';
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return mapMathText(node.textContent || '');
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const classList = node.classList;
+
+    if (
+      classList.contains('katex-mathml') ||
+      classList.contains('strut') ||
+      classList.contains('pstrut') ||
+      classList.contains('vlist-s') ||
+      classList.contains('frac-line') ||
+      classList.contains('sqrt-line')
+    ) {
+      return '';
+    }
+
+    if (classList.contains('mspace')) return ' ';
+    if (classList.contains('mfrac')) return renderKatexFraction(node);
+    if (classList.contains('sqrt')) return renderKatexSqrt(node);
+    if (classList.contains('msupsub')) return renderKatexScripts(node);
+
+    if (hasDirectKatexScript(node)) {
+      return Array.from(node.childNodes)
+        .map((child) => renderKatexNode(child))
+        .join('');
+    }
+
+    const rendered = renderKatexChildren(node);
+    return normalizeKatexElementText(rendered, node);
+  }
+
+  function renderKatexChildren(node) {
+    return Array.from(node.childNodes).map(renderKatexNode).join('');
+  }
+
+  function renderKatexFraction(node) {
+    const pieces = collectKatexVlistPieces(node).sort(sortByTopPosition);
+    if (pieces.length < 2) return cleanupTex(renderKatexChildren(node));
+
+    return `\\frac{${pieces[0].tex}}{${pieces[pieces.length - 1].tex}}`;
+  }
+
+  function renderKatexSqrt(node) {
+    const pieces = collectKatexVlistPieces(node).sort(sortByTopPosition);
+    const radicand = pieces.length ? pieces[pieces.length - 1].tex : cleanupTex(renderKatexChildren(node));
+    return radicand ? `\\sqrt{${radicand}}` : '';
+  }
+
+  function renderKatexScripts(node) {
+    const pieces = collectKatexVlistPieces(node).sort(sortByTopPosition);
+    if (!pieces.length) return '';
+
+    const scripts = { sub: '', sup: '' };
+
+    if (pieces.length === 1) {
+      if (pieces[0].top <= -2.7) {
+        scripts.sup = pieces[0].tex;
+      } else {
+        scripts.sub = pieces[0].tex;
+      }
+    } else {
+      scripts.sup = pieces[0].tex;
+      scripts.sub = pieces[pieces.length - 1].tex;
+    }
+
+    return `${scripts.sub ? `_{${scripts.sub}}` : ''}${scripts.sup ? `^{${scripts.sup}}` : ''}`;
+  }
+
+  function collectKatexVlistPieces(node) {
+    return Array.from(node.querySelectorAll('.vlist > span'))
+      .map((span) => ({
+        tex: cleanupTex(renderKatexChildren(span)),
+        top: getKatexTopPosition(span),
+      }))
+      .filter((piece) => piece.tex);
+  }
+
+  function hasDirectKatexScript(node) {
+    return Array.from(node.children).some((child) => child.classList.contains('msupsub'));
+  }
+
+  function normalizeKatexElementText(text, node) {
+    const mapped = mapMathText(text);
+    if (!mapped) return '';
+
+    if (node.classList.contains('mrel') || node.classList.contains('mbin')) {
+      return ` ${mapped} `;
+    }
+
+    if (node.classList.contains('mop') && KATEX_OPERATOR_NAMES.has(mapped)) {
+      return `\\${mapped}`;
+    }
+
+    return mapped;
+  }
+
+  function mapMathText(text) {
+    return Array.from(text || '')
+      .map((character) => MATH_SYMBOLS.get(character) || character)
+      .join('');
+  }
+
+  function getKatexTopPosition(node) {
+    const match = (node.getAttribute('style') || '').match(/top:\s*(-?\d+(?:\.\d+)?)em/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  function sortByTopPosition(left, right) {
+    return left.top - right.top;
+  }
+
+  function isMathElement(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+    if (matchesMathSelector(node)) return true;
+    return isKnownMathShell(node) && Boolean(findTexAnnotation(node) || findKatexTex(node) || findMathMlTex(node));
+  }
+
+  function matchesMathSelector(node) {
+    try {
+      return node.matches(MATH_SELECTOR);
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function isKnownMathShell(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+    return Boolean(
+      node.closest(
+        '.katex,.katex-display,.math-inline,.math-display,.MathJax,.MathJax_Display,mjx-container',
+      ) ||
+        node.classList.contains('math-inline') ||
+        node.classList.contains('math-display'),
+    );
+  }
+
+  function isDisplayMath(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+
+    const scriptType = node.tagName.toUpperCase() === 'SCRIPT' ? node.getAttribute('type') || '' : '';
+    return Boolean(
+      /mode=display/i.test(scriptType) ||
+        node.getAttribute('display') === 'block' ||
+        node.getAttribute('display') === 'true' ||
+        node.classList.contains('katex-display') ||
+        node.classList.contains('math-display') ||
+        node.classList.contains('MathJax_Display') ||
+        node.closest('.katex-display,.math-display,.MathJax_Display,mjx-container[display="true"]'),
+    );
+  }
+
+  function wrapMathMarkdown(tex, display, context) {
+    const clean = normalizeTexSource(tex);
+    if (!clean) return '';
+
+    if (display) {
+      return context.tight ? `$$${clean}$$` : `$$\n${clean}\n$$`;
+    }
+
+    return `$${clean.replace(/\$/g, '\\$')}$`;
+  }
+
+  function normalizeTexSource(tex) {
+    return stripMathDelimiters((tex || '').replace(/\u00a0/g, ' ').replace(/\r\n?/g, '\n').trim())
+      .replace(/[ \t]+/g, ' ')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .trim();
+  }
+
+  function stripMathDelimiters(tex) {
+    const clean = tex.trim();
+
+    if (clean.startsWith('$$') && clean.endsWith('$$')) return clean.slice(2, -2).trim();
+    if (clean.startsWith('\\[') && clean.endsWith('\\]')) return clean.slice(2, -2).trim();
+    if (clean.startsWith('\\(') && clean.endsWith('\\)')) return clean.slice(2, -2).trim();
+    if (clean.startsWith('$') && clean.endsWith('$')) return clean.slice(1, -1).trim();
+
+    return clean;
+  }
+
+  function cleanupTex(tex) {
+    return (tex || '')
+      .replace(/\u00a0/g, ' ')
+      .replace(/[ \t\r\n]+/g, ' ')
+      .replace(/\s+([,.;:!?)\]}])/g, '$1')
+      .replace(/([([{])\s+/g, '$1')
+      .replace(/\s*(\\(?:approx|cdot|cup|cap|div|equiv|ge|in|land|le|lor|mp|ne|notin|pm|subset|subseteq|supset|supseteq|times)|[=<>+\-])\s*/g, ' $1 ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function normalizeHtml(html) {
     return html
       .replace(/<li>\s*<p>/g, '<li>')
@@ -443,14 +886,18 @@
   }
 
   function isInlineCopyNode(node) {
-    if (!node || shouldSkip(node)) return true;
+    if (!node) return true;
+    if (isMathElement(node)) return !isDisplayMath(node);
+    if (shouldSkip(node)) return true;
     if (node.nodeType === Node.TEXT_NODE) return true;
     if (node.nodeType !== Node.ELEMENT_NODE) return true;
     return isInlineElement(node) || node.tagName === 'BR';
   }
 
   function isEmptyCopyNode(node) {
-    if (!node || shouldSkip(node)) return true;
+    if (!node) return true;
+    if (isMathElement(node)) return !extractMath(node);
+    if (shouldSkip(node)) return true;
     if (node.nodeType === Node.TEXT_NODE) return !(node.textContent || '').trim();
     return false;
   }
