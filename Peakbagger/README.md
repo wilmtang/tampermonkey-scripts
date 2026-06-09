@@ -29,15 +29,17 @@ The script relies on raw data arrays extracted from the `<trkpt>` tags of the GP
 To combat out-of-order track segments (e.g., when a GPX editor appends Day 3 before Day 1, or Peakbagger merges tracks in reverse), the script first sorts every single `<trkpt>` by its `<time>` node. This guarantees distance and time accumulate chronologically.
 
 ### 2. Distance, Elevation Gain, and Grade
-To eliminate "GPS jitter" (the artificial inflation of metrics due to noisy GPS signals), the script applies several smoothing algorithms:
-- **Distance (Thresholding):** Computed using the **Haversine formula**. To prevent stationary GPS drift from adding phantom miles, the script only accumulates distance if the next point is at least **5 meters** away from your previously recorded valid position.
-- **Elevation Gain (Hysteresis Filter):** The script maintains a local minimum. It only records elevation gain if you climb continuously by at least **3 meters (~10 feet)** above that minimum. Minor dips and bounces within that 3-meter threshold are ignored as noise.
-- **Grade (%) (Moving Baseline):** To prevent wild percentage spikes caused by points being too close together, steepness is calculated over a rolling window of the last 5 trackpoints.
+To make the totals closer to Garmin/Strava-style activity stats without using any external correction service, the script applies several client-side adjustment steps:
+- **Distance (Confirmed Movement):** Computed using the **Haversine formula**. Instead of dropping every sub-5-meter step, the script holds those small steps in a pending buffer and adds their full path length once movement is confirmed by at least **5 meters** of displacement. This preserves dense switchbacks while still suppressing stationary GPS drift.
+- **Bad GPS Jumps:** When timestamps are available, obviously impossible hiking-speed jumps are rejected from the adjusted mileage.
+- **Elevation Gain (Smoothed Hysteresis):** Raw GPX elevations are filtered with a 5-point median and a short distance-window smoother. Gain is then counted with a confirmed ascent/descent hysteresis filter, so small dips do not reset the climb and noisy flat sections do not create phantom gain.
+- **Grade (%) (Distance Window):** Tooltip grade is calculated from adjusted distance and smoothed elevation over a broader distance baseline, reducing wild spikes from points that are too close together.
+- **Metric Note:** The stats area labels the totals as **Adjusted GPX metrics** and shows raw-vs-adjusted deltas only when the difference is meaningful.
 
 
 ### 3. Timing Metrics
 - **Start Time:** The timestamp of the first chronological point in the GPX file.
-- **Summit Time:** The timestamp belonging to the trackpoint with the highest overall elevation (`maxEle`).
+- **Summit Time:** The timestamp belonging to the highest adjusted elevation point.
 - **Back to Car Time:** The timestamp of the final chronological point.
 - **Time to Summit:** The elapsed time between `Start Time` and `Summit Time`.
 - **Time Back:** The elapsed time between `Summit Time` and `Back to Car Time`.

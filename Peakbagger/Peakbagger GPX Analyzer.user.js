@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      13.10
+// @version      13.11
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       wilmtang
 // @license      MIT
@@ -21,7 +21,242 @@
 (async () => {
     'use strict';
 
+    const METERS_PER_MILE = 1609.344;
+    const FEET_PER_METER = 3.28084;
+    const DIST_CONFIRM_M = 5;
+    const ELEVATION_GAIN_THRESHOLD_M = 3;
+    const ELEVATION_SMOOTH_WINDOW_M = 30;
+    const ELEVATION_SMOOTH_POINT_RADIUS = 10;
+    const GRADE_WINDOW_M = 60;
+    const GRADE_MIN_DISTANCE_M = 10;
+    const GRADE_MAX_LOOKBACK_POINTS = 50;
+    const MAX_REASONABLE_SPEED_MPS = 10;
+    const PAUSE_RESET_SECONDS = 300;
 
+    const toRad = x => x * Math.PI / 180;
+
+    const calcDistMeters = (l1, n1, l2, n2) => {
+        const a = Math.sin(toRad(l2 - l1) / 2) ** 2 + Math.cos(toRad(l1)) * Math.cos(toRad(l2)) * Math.sin(toRad(n2 - n1) / 2) ** 2;
+        return 6371008.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const median = values => {
+        if (!values.length) return 0;
+        const sorted = values.slice().sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+
+    const calculatePositiveGainM = elevations => elevations.reduce((gain, ele, index) => {
+        if (index === 0) return gain;
+        const delta = ele - elevations[index - 1];
+        return delta > 0 ? gain + delta : gain;
+    }, 0);
+
+    const calculateConfirmedGainM = elevations => {
+        if (elevations.length < 2) return 0;
+
+        let gainM = 0;
+        let valley = elevations[0];
+        let peak = elevations[0];
+        let state = 'unknown';
+
+        elevations.forEach(ele => {
+            if (state === 'rising') {
+                if (ele > peak) {
+                    peak = ele;
+                } else if (peak - ele >= ELEVATION_GAIN_THRESHOLD_M) {
+                    gainM += peak - valley;
+                    state = 'falling';
+                    valley = ele;
+                    peak = ele;
+                }
+                return;
+            }
+
+            if (ele < valley) {
+                valley = ele;
+                peak = ele;
+                return;
+            }
+
+            if (ele - valley >= ELEVATION_GAIN_THRESHOLD_M) {
+                state = 'rising';
+                peak = ele;
+            }
+        });
+
+        if (state === 'rising') {
+            gainM += peak - valley;
+        }
+
+        return gainM;
+    };
+
+    const smoothElevations = (points, distMByIndex) => {
+        const medianElevations = points.map((point, index) => {
+            const start = Math.max(0, index - 2);
+            const end = Math.min(points.length, index + 3);
+            return median(points.slice(start, end).map(p => p.rawEleM));
+        });
+
+        const halfWindowM = ELEVATION_SMOOTH_WINDOW_M / 2;
+        return medianElevations.map((ele, index) => {
+            const centerDistM = distMByIndex[index];
+            const windowValues = [];
+
+            for (let i = index; i >= Math.max(0, index - ELEVATION_SMOOTH_POINT_RADIUS); i--) {
+                if (centerDistM - distMByIndex[i] > halfWindowM) break;
+                windowValues.push(medianElevations[i]);
+            }
+
+            for (let i = index + 1; i < Math.min(medianElevations.length, index + ELEVATION_SMOOTH_POINT_RADIUS + 1); i++) {
+                if (distMByIndex[i] - centerDistM > halfWindowM) break;
+                windowValues.push(medianElevations[i]);
+            }
+
+            if (!windowValues.length) return ele;
+            return windowValues.reduce((sum, value) => sum + value, 0) / windowValues.length;
+        });
+    };
+
+    const computeAdjustedDistances = (points, hasTime) => {
+        const distMByIndex = new Array(points.length).fill(0);
+        if (points.length < 2) {
+            return { distanceM: 0, rawDistanceM: 0, distMByIndex };
+        }
+
+        let distanceM = 0;
+        let rawDistanceM = 0;
+        let anchor = points[0];
+        let prev = points[0];
+        let pendingSteps = [];
+        let pendingIndices = [];
+
+        const resetPending = current => {
+            pendingSteps = [];
+            pendingIndices = [];
+            anchor = current;
+        };
+
+        for (let i = 1; i < points.length; i++) {
+            const current = points[i];
+            const stepM = calcDistMeters(prev.lat, prev.lon, current.lat, current.lon);
+            const elapsedSeconds = hasTime ? (current.ms - prev.ms) / 1000 : 0;
+            const isBadJump = elapsedSeconds > 0 && stepM > DIST_CONFIRM_M && stepM / elapsedSeconds > MAX_REASONABLE_SPEED_MPS;
+
+            rawDistanceM += stepM;
+            distMByIndex[i] = distanceM;
+
+            if (isBadJump) {
+                resetPending(current);
+                prev = current;
+                continue;
+            }
+
+            pendingSteps.push(stepM);
+            pendingIndices.push(i);
+
+            const pendingDisplacementM = calcDistMeters(anchor.lat, anchor.lon, current.lat, current.lon);
+            const isLongPauseNoise = elapsedSeconds >= PAUSE_RESET_SECONDS && pendingDisplacementM < DIST_CONFIRM_M;
+
+            if (isLongPauseNoise) {
+                resetPending(current);
+            } else if (pendingDisplacementM >= DIST_CONFIRM_M) {
+                let runningDistanceM = distanceM;
+                pendingIndices.forEach((index, pendingIndex) => {
+                    runningDistanceM += pendingSteps[pendingIndex];
+                    distMByIndex[index] = runningDistanceM;
+                });
+                distanceM = runningDistanceM;
+                resetPending(current);
+            }
+
+            prev = current;
+        }
+
+        return { distanceM, rawDistanceM, distMByIndex };
+    };
+
+    const calculateGrade = (index, distMByIndex, elevations) => {
+        const centerDistM = distMByIndex[index];
+        let baselineIndex = index;
+
+        while (baselineIndex > 0 && index - baselineIndex < GRADE_MAX_LOOKBACK_POINTS && centerDistM - distMByIndex[baselineIndex] < GRADE_WINDOW_M) {
+            baselineIndex--;
+        }
+
+        const distDiffM = centerDistM - distMByIndex[baselineIndex];
+        if (distDiffM < GRADE_MIN_DISTANCE_M) return 0;
+        return ((elevations[index] - elevations[baselineIndex]) / distDiffM) * 100;
+    };
+
+    const computeMetrics = points => {
+        const validPoints = points
+            .map((point, index) => ({ ...point, index }))
+            .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon) && Number.isFinite(point.rawEleM));
+
+        if (!validPoints.length) {
+            return {
+                hasTime: false,
+                distanceM: 0,
+                gainM: 0,
+                rawDistanceM: 0,
+                rawGainM: 0,
+                points: [],
+                chartPoints: [],
+                startMs: 0,
+                endMs: 0,
+                summitMs: 0,
+                maxEleM: -Infinity
+            };
+        }
+
+        const hasTime = validPoints.every(point => Number.isFinite(point.ms) && point.ms > 0);
+        const sortedPoints = validPoints.slice().sort((a, b) => {
+            if (hasTime && a.ms !== b.ms) return a.ms - b.ms;
+            return a.index - b.index;
+        });
+
+        const { distanceM, rawDistanceM, distMByIndex } = computeAdjustedDistances(sortedPoints, hasTime);
+        const smoothedElevations = smoothElevations(sortedPoints, distMByIndex);
+        const rawGainM = calculatePositiveGainM(sortedPoints.map(point => point.rawEleM));
+        const gainM = calculateConfirmedGainM(smoothedElevations);
+
+        let maxEleM = -Infinity;
+        let summitMs = 0;
+        const adjustedPoints = sortedPoints.map((point, index) => {
+            const eleM = smoothedElevations[index];
+            if (eleM > maxEleM) {
+                maxEleM = eleM;
+                summitMs = point.ms || 0;
+            }
+
+            return {
+                lat: point.lat,
+                lon: point.lon,
+                ms: point.ms || 0,
+                rawEleM: point.rawEleM,
+                eleM,
+                distM: distMByIndex[index],
+                grade: calculateGrade(index, distMByIndex, smoothedElevations)
+            };
+        });
+
+        return {
+            hasTime,
+            distanceM,
+            gainM,
+            rawDistanceM,
+            rawGainM,
+            points: adjustedPoints,
+            chartPoints: adjustedPoints.filter((point, index) => index % 3 === 0 || index === adjustedPoints.length - 1),
+            startMs: hasTime ? adjustedPoints[0].ms : 0,
+            endMs: hasTime ? adjustedPoints[adjustedPoints.length - 1].ms : 0,
+            summitMs,
+            maxEleM
+        };
+    };
 
     const initChart = async () => {
         // 1. Locate GPX link and build UI
@@ -83,12 +318,7 @@
             }
         });
 
-        // 2. Mathematical & Formatting Helpers
-        const toRad = x => x * Math.PI / 180;
-        const calcDistMiles = (l1, n1, l2, n2) => {
-            const a = Math.sin(toRad(l2 - l1) / 2) ** 2 + Math.cos(toRad(l1)) * Math.cos(toRad(l2)) * Math.sin(toRad(n2 - n1) / 2) ** 2;
-            return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        };
+        // 2. Formatting Helpers
         const fmtTime = ms => ms > 0 ? `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m` : '0m';
         const getRelativeDay = (ms, startMs) => {
             const startDate = new Date(startMs);
@@ -123,22 +353,40 @@
 
         // Processing Arrays & Core Metrics
         let chartInstance = null;
-        let rawData = [];
-        let totalDistMiles = 0, gainFeet = 0, totalMs = 0, hasTime = false;
-        let startMs = 0, endMs = 0, summitMs = 0, maxEle = -Infinity;
+        let chartData = [];
+        let metrics = { distanceM: 0, gainM: 0, rawDistanceM: 0, rawGainM: 0 };
+        let totalMs = 0, hasTime = false;
+        let startMs = 0, endMs = 0, summitMs = 0;
         let campingSpots = [];
         let hoverMarker = null;
 
         // 4. Chart & UI Renderer Engine
         const renderData = () => {
             const isMet = unitSelect.value === 'met';
-            const dMult = isMet ? 1.60934 : 1, eMult = isMet ? 0.3048 : 1;
+            const dMult = isMet ? 0.001 : 1 / METERS_PER_MILE, eMult = isMet ? 1 : FEET_PER_METER;
             const dUnit = isMet ? 'km' : 'miles', eUnit = isMet ? 'm' : 'ft';
+            const formatDistanceM = meters => `${(meters * dMult).toFixed(2)} ${dUnit}`;
+            const formatElevationM = meters => `${(meters * eMult).toFixed(0)} ${eUnit}`;
+            const formatSignedDistanceDelta = meters => `${meters >= 0 ? '+' : '-'}${formatDistanceM(Math.abs(meters))}`;
+            const formatSignedElevationDelta = meters => `${meters >= 0 ? '+' : '-'}${formatElevationM(Math.abs(meters))}`;
+            const buildMetricNote = () => {
+                const distDeltaM = metrics.rawDistanceM - metrics.distanceM;
+                const gainDeltaM = metrics.rawGainM - metrics.gainM;
+                const distWorthShowing = Math.abs(distDeltaM) >= Math.max(0.03 * Math.max(metrics.distanceM, 1), 0.1 * METERS_PER_MILE);
+                const gainWorthShowing = Math.abs(gainDeltaM) >= Math.max(0.05 * Math.max(metrics.gainM, 1), 100 / FEET_PER_METER);
+                const parts = [];
+
+                if (distWorthShowing) parts.push(`${formatSignedDistanceDelta(distDeltaM)} distance`);
+                if (gainWorthShowing) parts.push(`${formatSignedElevationDelta(gainDeltaM)} gain`);
+
+                return parts.length ? `Adjusted GPX metrics (raw GPX ${parts.join(', ')})` : 'Adjusted GPX metrics';
+            };
 
             const isMultiDay = hasTime && (getRelativeDay(endMs, startMs) > 1);
 
             // Format Stats Bar
-            let txt = `Interactive Stats: ${(totalDistMiles * dMult).toFixed(2)} ${dUnit} | ${(gainFeet * eMult).toFixed(0)} ${eUnit} gain`;
+            let txt = `Interactive Stats: ${formatDistanceM(metrics.distanceM)} | ${formatElevationM(metrics.gainM)} gain`;
+            const subParts = [`<div style="color: #777; font-size: 0.95em; margin-bottom: 2px;">${buildMetricNote()}</div>`];
             if (hasTime) {
                 txt += ` | Time: ${fmtTime(totalMs)}`;
                 if (summitMs > startMs) {
@@ -149,24 +397,21 @@
                         const spotStrs = campingSpots.map(s => `Day ${s.day} (${s.lat.toFixed(5)}, ${s.lon.toFixed(5)})`).join(' | ');
                         campingHtml = `<div style="color: #888; font-size: 0.95em; margin-top: 2px;">Possible Camping: ${spotStrs}</div>`;
                     }
-                    subStats.innerHTML = `
-                    <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs, startMs, isMultiDay)} | Summit time: ${formatTimeStr(summitMs, startMs, isMultiDay)} | Back to car: ${formatTimeStr(endMs, startMs, isMultiDay)}</div>
-                    <div style="color: #888; font-size: 0.95em;">Time to summit: ${fmtTime(timeToSummit)} | Time back: ${fmtTime(timeBack)}</div>
-                    ${campingHtml}
-                `;
-                } else {
-                    subStats.innerHTML = "";
+                    subParts.push(`
+                        <div style="color: #666; margin-bottom: 2px;">Start time: ${formatTimeStr(startMs, startMs, isMultiDay)} | Summit time: ${formatTimeStr(summitMs, startMs, isMultiDay)} | Back to car: ${formatTimeStr(endMs, startMs, isMultiDay)}</div>
+                        <div style="color: #888; font-size: 0.95em;">Time to summit: ${fmtTime(timeToSummit)} | Time back: ${fmtTime(timeBack)}</div>
+                        ${campingHtml}
+                    `);
                 }
-            } else {
-                subStats.innerHTML = "";
             }
             stats.innerHTML = `<span style="color:#000000;">${txt}</span>`;
+            subStats.innerHTML = subParts.join('');
 
-            // Map Raw Arrays
+            // Map adjusted arrays
             const eleDistData = [], eleTimeData = [];
-            rawData.forEach(d => {
-                const eleConv = parseFloat((d.ele * eMult).toFixed(0));
-                eleDistData.push({ x: parseFloat((d.dist * dMult).toFixed(2)), y: eleConv, _raw: d });
+            chartData.forEach(d => {
+                const eleConv = parseFloat((d.eleM * eMult).toFixed(0));
+                eleDistData.push({ x: parseFloat((d.distM * dMult).toFixed(2)), y: eleConv, _raw: d });
                 if (hasTime && d.ms) {
                     eleTimeData.push({ x: d.ms, y: eleConv, _raw: d });
                 }
@@ -192,7 +437,7 @@
                 });
             }
 
-            const maxDist = parseFloat((totalDistMiles * dMult).toFixed(2));
+            const maxDist = parseFloat((metrics.distanceM * dMult).toFixed(2));
 
             chartInstance = new Chart(canvas.getContext('2d'), {
                 type: 'line',
@@ -276,7 +521,7 @@
                             callbacks: {
                                 title: items => {
                                     const d = items[0].raw._raw;
-                                    return `Dist: ${(d.dist * dMult).toFixed(2)} ${dUnit}`;
+                                    return `Dist: ${(d.distM * dMult).toFixed(2)} ${dUnit}`;
                                 },
                                 label: item => {
                                     const d = item.raw._raw;
@@ -340,91 +585,41 @@
             const trkpts = Array.from(xml.querySelectorAll('trkpt'));
             if (!trkpts.length) return stats.innerText = "No track points found.";
 
-            hasTime = !!trkpts[0].querySelector('time');
+            const parsedPoints = trkpts.map(pt => {
+                const eleNode = pt.querySelector('ele');
+                const timeNode = pt.querySelector('time');
+                const parsedMs = timeNode ? new Date(timeNode.textContent).getTime() : 0;
+                const rawEleM = eleNode ? parseFloat(eleNode.textContent) : 0;
 
-            if (hasTime) {
-                trkpts.sort((a, b) => {
-                    const timeA = a.querySelector('time') ? new Date(a.querySelector('time').textContent).getTime() : 0;
-                    const timeB = b.querySelector('time') ? new Date(b.querySelector('time').textContent).getTime() : 0;
-                    return timeA - timeB;
-                });
-            }
-
-            let prev = null;
-            let validPrevDistPt = null;
-            let eleLocalMin = null;
-            let recentPts = [];
-            const DIST_THRESHOLD_MILES = 5 / 1609.34; // 5 meters
-            const ELE_THRESHOLD_FEET = 3 * 3.28084;   // 3 meters
-
-            trkpts.forEach((pt, i) => {
-                const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
-                const ele = pt.querySelector('ele') ? parseFloat(pt.querySelector('ele').textContent) * 3.28084 : 0;
-                const ms = pt.querySelector('time') ? new Date(pt.querySelector('time').textContent).getTime() : 0;
-                let grade = 0;
-
-                if (i === 0 && hasTime) startMs = ms;
-                if (hasTime) endMs = ms;
-
-                if (ele > maxEle) {
-                    maxEle = ele;
-                    summitMs = ms;
-                }
-
-                if (i === 0) {
-                    eleLocalMin = ele;
-                    validPrevDistPt = { lat, lon, ele };
-                }
-
-                if (prev) {
-                    if (hasTime && prev.day) {
-                        const currDay = getRelativeDay(ms, startMs);
-                        if (currDay > prev.day) {
-                            campingSpots.push({ day: prev.day, lat: prev.lat, lon: prev.lon });
-                        }
-                    }
-
-                    // 1. Distance Threshold
-                    const dFromValid = calcDistMiles(validPrevDistPt.lat, validPrevDistPt.lon, lat, lon);
-                    if (dFromValid >= DIST_THRESHOLD_MILES) {
-                        totalDistMiles += dFromValid;
-                        validPrevDistPt = { lat, lon, ele };
-                    }
-
-                    // 2. Elevation Hysteresis
-                    if (ele < eleLocalMin) {
-                        eleLocalMin = ele;
-                    } else if (ele - eleLocalMin >= ELE_THRESHOLD_FEET) {
-                        gainFeet += (ele - eleLocalMin);
-                        eleLocalMin = ele;
-                    }
-
-                    // 3. Grade Moving Baseline
-                    recentPts.push({ dist: totalDistMiles, ele: ele });
-                    if (recentPts.length > 5) recentPts.shift();
-
-                    if (recentPts.length > 1) {
-                        const oldestPt = recentPts[0];
-                        const distDiff = totalDistMiles - oldestPt.dist;
-                        if (distDiff > 0) {
-                            grade = ((ele - oldestPt.ele) / (distDiff * 5280)) * 100;
-                        }
-                    }
-                } else {
-                    recentPts.push({ dist: 0, ele: ele });
-                }
-
-                if (i % 3 === 0 || i === trkpts.length - 1) {
-                    rawData.push({
-                        dist: totalDistMiles, ele: ele, grade: grade, ms: ms, lat: lat, lon: lon,
-                        time: hasTime ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
-                    });
-                }
-                prev = { lat, lon, ele, ms, day: hasTime ? getRelativeDay(ms, startMs) : 1 };
+                return {
+                    lat: parseFloat(pt.getAttribute('lat')),
+                    lon: parseFloat(pt.getAttribute('lon')),
+                    rawEleM: Number.isFinite(rawEleM) ? rawEleM : 0,
+                    ms: Number.isFinite(parsedMs) ? parsedMs : 0
+                };
             });
+
+            metrics = computeMetrics(parsedPoints);
+            if (!metrics.points.length) return stats.innerText = "No valid track points found.";
+
+            chartData = metrics.chartPoints;
+            hasTime = metrics.hasTime;
+            startMs = metrics.startMs;
+            endMs = metrics.endMs;
+            summitMs = metrics.summitMs;
+            campingSpots = [];
 
             if (hasTime) {
                 totalMs = endMs - startMs;
+                metrics.points.forEach((point, index) => {
+                    if (index === 0) return;
+                    const prev = metrics.points[index - 1];
+                    const prevDay = getRelativeDay(prev.ms, startMs);
+                    const currDay = getRelativeDay(point.ms, startMs);
+                    if (currDay > prevDay) {
+                        campingSpots.push({ day: prevDay, lat: prev.lat, lon: prev.lon });
+                    }
+                });
             }
 
             renderData();
