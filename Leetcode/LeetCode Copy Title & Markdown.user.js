@@ -1,49 +1,55 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      2.3
-// @description  Adds buttons to copy the title/description to Markdown, and makes the title selectable
+// @version      2.4
+// @description  Adds LeetCode copy helpers and preserves SPA browser history
 // @author       wilmtang
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Leetcode
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/580093/LeetCode%20Copy%20Title%20%20Markdown.meta.js
 // @downloadURL  https://update.greasyfork.org/scripts/580093/LeetCode%20Copy%20Title%20%20Markdown.user.js
-// @match        *://leetcode.com/problems/*/
-// @match        *://leetcode.com/problems/*/description/
-// @match        *://leetcode.com/problems/*/*
-// @match        *://www.leetcode.com/problems/*/
-// @match        *://www.leetcode.com/problems/*/description/
-// @match        *://www.leetcode.com/problems/*/*
+// @match        *://leetcode.com/*
+// @match        *://www.leetcode.com/*
 // @grant        GM_setClipboard
+// @grant        unsafeWindow
 // @require      https://unpkg.com/turndown@7.2.4/dist/turndown.js
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
 
     const CONTAINER_ID = 'lc-copy-btns-container';
+    const URL_CHANGE_EVENT = 'lc-copy-title-markdown:urlchange';
     let lastInjectedTitle = null;
-    let lastPathname = null;
+    let lastUrl = location.href;
+    let titleSelectionHandlersInstalled = false;
+    let buttonObserver = null;
 
     // --- Selectability CSS & Event Blockers ---
     function makeTitleSelectable() {
-        if (document.getElementById('lc-selectable-style')) return;
-        
-        const style = document.createElement('style');
-        style.id = 'lc-selectable-style';
-        style.innerHTML = `
-            .text-title-large,
-            .text-title-large * {
-                -webkit-user-select: text !important;
-                -moz-user-select: text !important;
-                -ms-user-select: text !important;
-                user-select: text !important;
-                cursor: text !important;
-                pointer-events: auto !important;
-            }
-        `;
-        document.head.appendChild(style);
+        if (!document.head) return;
+
+        if (!document.getElementById('lc-selectable-style')) {
+            const style = document.createElement('style');
+            style.id = 'lc-selectable-style';
+            style.innerHTML = `
+                .text-title-large,
+                .text-title-large * {
+                    -webkit-user-select: text !important;
+                    -moz-user-select: text !important;
+                    -ms-user-select: text !important;
+                    user-select: text !important;
+                    cursor: text !important;
+                    pointer-events: auto !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        if (titleSelectionHandlersInstalled) return;
+        titleSelectionHandlersInstalled = true;
 
         const stopDragCancel = function(e) {
             let target = e.target;
@@ -61,8 +67,6 @@
         document.addEventListener('selectstart', stopDragCancel, true);
         document.addEventListener('dragstart', stopDragCancel, true);
     }
-
-    makeTitleSelectable();
 
     // --- NEW in 2.1: Destroy Link Behavior ---
     // This stops the browser from treating the middle of the text as a draggable URL
@@ -327,30 +331,99 @@
         titleEl.insertAdjacentElement('afterend', container);
 
         lastInjectedTitle = titleText;
-        lastPathname = location.pathname;
+        lastUrl = location.href;
     }
 
     // Watch for SPA navigations via URL changes
     function onUrlChange() {
-        if (location.pathname !== lastPathname) {
+        if (location.href !== lastUrl) {
             lastInjectedTitle = null;
-            lastPathname = location.pathname;
+            lastUrl = location.href;
             injectButtons(); 
         }
     }
 
-    const _pushState = history.pushState.bind(history);
-    history.pushState = function (...args) {
-        _pushState(...args);
-        onUrlChange();
-    };
+    function installHistoryShimOnWindow(win, eventName) {
+        if (win.__lcCopyTitleMarkdownHistoryShimInstalled) return;
+        win.__lcCopyTitleMarkdownHistoryShimInstalled = true;
+
+        let isHandlingPopstate = false;
+        const pushState = win.history.pushState.bind(win.history);
+        const replaceState = win.history.replaceState.bind(win.history);
+        const notify = () => {
+            win.dispatchEvent(new win.CustomEvent(eventName, { detail: { href: win.location.href } }));
+        };
+
+        function getUrlFromHistoryArgs(args) {
+            if (args.length < 3 || args[2] == null) return null;
+            return new win.URL(args[2], win.location.href).href;
+        }
+
+        win.history.pushState = function (...args) {
+            const result = pushState(...args);
+            notify();
+            return result;
+        };
+
+        // LeetCode sometimes changes SPA routes with replaceState, which prevents
+        // Back from returning to the previous URL. Push distinct URLs instead.
+        win.history.replaceState = function (...args) {
+            const targetUrl = getUrlFromHistoryArgs(args);
+            const result = targetUrl && targetUrl !== win.location.href && !isHandlingPopstate
+                ? pushState(...args)
+                : replaceState(...args);
+            notify();
+            return result;
+        };
+
+        win.addEventListener('popstate', () => {
+            isHandlingPopstate = true;
+            win.setTimeout(() => {
+                isHandlingPopstate = false;
+            }, 0);
+            notify();
+        }, true);
+        win.addEventListener('hashchange', notify);
+    }
+
+    function installPageHistoryShim() {
+        try {
+            const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+            installHistoryShimOnWindow(pageWindow, URL_CHANGE_EVENT);
+        } catch (_err) {}
+
+        const root = document.documentElement || document.head || document.body;
+        if (!root) {
+            window.addEventListener('DOMContentLoaded', installPageHistoryShim, { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.textContent = `(${installHistoryShimOnWindow.toString()})(window, ${JSON.stringify(URL_CHANGE_EVENT)});`;
+        root.appendChild(script);
+        script.remove();
+    }
+
+    installPageHistoryShim();
+    window.addEventListener(URL_CHANGE_EVENT, onUrlChange);
     window.addEventListener('popstate', onUrlChange);
+    window.addEventListener('hashchange', onUrlChange);
 
-    const observer = new MutationObserver(() => injectButtons());
-    observer.observe(document.body, { childList: true, subtree: true });
+    function startDomFeatures() {
+        makeTitleSelectable();
+        injectButtons();
 
-    window.addEventListener('load', injectButtons);
-    setTimeout(injectButtons, 1000);
-    setTimeout(injectButtons, 2500);
-    setTimeout(injectButtons, 5000);
+        if (!buttonObserver && document.body) {
+            buttonObserver = new MutationObserver(() => injectButtons());
+            buttonObserver.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
+    startDomFeatures();
+    window.addEventListener('DOMContentLoaded', startDomFeatures);
+    window.addEventListener('load', startDomFeatures);
+    setTimeout(startDomFeatures, 250);
+    setTimeout(startDomFeatures, 1000);
+    setTimeout(startDomFeatures, 2500);
+    setTimeout(startDomFeatures, 5000);
 })();
