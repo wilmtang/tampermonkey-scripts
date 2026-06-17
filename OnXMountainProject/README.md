@@ -4,6 +4,7 @@ Adds a direct "Open on Mountain Project" link to onX Backcountry pages that show
 
 ## Supported Pages
 
+- Loads on `https://webmap.onxmaps.com/backcountry*` so it works after onX SPA navigation.
 - `https://webmap.onxmaps.com/backcountry/map/mountain-project/areas/...`
 - `https://webmap.onxmaps.com/backcountry/map/mountain-project/routes/...`
 

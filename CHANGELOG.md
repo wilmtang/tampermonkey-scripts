@@ -5,6 +5,12 @@ repository; Greasy Fork picks up published scripts on the next sync.
 
 ## 2026-06-17 — onX Mountain Project Link
 
+### onX Mountain Project Link — 0.1.1
+
+- **Loads before SPA navigation.** Broadened the userscript match pattern to
+  the onX Backcountry app shell so Tampermonkey runs the script before clicking
+  into a Mountain Project area or route.
+
 ### onX Mountain Project Link — 0.1.0
 
 - **New local script.** Adds an "Open on Mountain Project" link to onX
