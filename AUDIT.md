@@ -8,18 +8,20 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 
 ## Summary
 
-| # | Severity | Script | Issue |
-|---|----------|--------|-------|
-| 1 | High | LeetCode | Copied Markdown URL is malformed (double slash) on any tab except `/description/` |
-| 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs |
-| 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack |
-| 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page |
-| 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content |
-| 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently |
-| 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) |
-| 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift |
-| 9 | Low | New Yorker | Filename/folder name disagrees with `@name` |
-| 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests |
+| # | Severity | Script | Issue | Status |
+|---|----------|--------|-------|--------|
+| 1 | High | LeetCode | Copied Markdown URL is malformed (double slash) on any tab except `/description/` | ✅ Fixed (v2.5) |
+| 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | ⬜ Open |
+| 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ⬜ Open |
+| 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ⬜ Open |
+| 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ⬜ Open |
+| 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
+| 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ⬜ Open |
+| 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ⬜ Open |
+| 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
+| 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | ⬜ Open |
+
+> Remediation in progress — see the **Status** column and the per-finding notes below. Each fix is a separate commit; scripts follow the `AGENTS.md` rule of bumping `@version` on any code change.
 
 ---
 
@@ -53,6 +55,12 @@ The intent is to normalize any problem URL to `…/problems/<slug>/description/`
 const slug = (window.location.pathname.match(/\/problems\/([^/]+)/) || [])[1];
 const url = slug ? `${window.location.origin}/problems/${slug}/description/` : window.location.href;
 ```
+
+> **✅ Fixed in v2.5.** Replaced the `split('/description')` logic with slug
+> extraction (`/\/problems\/([^/]+)/`). Verified in Node that `/description/`,
+> bare slug, `/solutions/`, `/submissions/`, and `/editorial/` paths all now
+> produce `…/problems/<slug>/description/`, with a fallback to `location.href`
+> for non-problem paths.
 
 ### 2. New Yorker — focus patch silently no-ops on a cross-origin embed
 

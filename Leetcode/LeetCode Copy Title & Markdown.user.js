@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      2.4
+// @version      2.5
 // @description  Adds LeetCode copy helpers and preserves SPA browser history
 // @author       wilmtang
 // @license      MIT
@@ -182,8 +182,13 @@
 
             const titleText = titleEl.textContent.trim();
 
-            const cleanPathname = window.location.pathname.split('/description')[0] + '/description/';
-            const url = window.location.origin + cleanPathname;
+            // Build the canonical problem URL from the slug. Splitting on
+            // '/description' broke on other sub-tabs (solutions/submissions/
+            // editorial), producing '/problems/<slug>/<tab>//description/'.
+            const slugMatch = window.location.pathname.match(/\/problems\/([^/]+)/);
+            const url = slugMatch
+                ? `${window.location.origin}/problems/${slugMatch[1]}/description/`
+                : window.location.href;
 
             let mdContent = convertToMarkdown(descEl.innerHTML);
             mdContent = mdContent.replace(/\u200B/g, '');
