@@ -11,12 +11,12 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | # | Severity | Script | Issue | Status |
 |---|----------|--------|-------|--------|
 | 1 | High | LeetCode | Copied Markdown URL is malformed (double slash) on any tab except `/description/` | ✅ Fixed (v2.5) |
-| 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | ⬜ Open |
+| 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | 🟡 Mitigated (v1.3) |
 | 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ⬜ Open |
 | 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ✅ Fixed (v2.6) |
 | 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ⬜ Open |
 | 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
-| 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ⬜ Open |
+| 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ✅ Fixed (v1.3) |
 | 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ⬜ Open |
 | 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
 | 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | ⬜ Open |
@@ -78,6 +78,13 @@ The whole mechanism reaches into the audio embed iframe's `contentWindow` and ov
 **Impact:** If the embed is cross-origin (very likely for a third-party player), the script's only feature never takes effect, yet it appears installed and healthy.
 
 **Suggested action:** Confirm the embed's actual origin on a live article. If cross-origin, the prototype-patch approach cannot work and the fix needs a different strategy (e.g., intercepting scroll/focus on the parent document, or `scroll-behavior`/scroll-anchoring CSS). At minimum, log the swallowed error so silent failure is visible.
+
+> **🟡 Mitigated in v1.3.** The empty `catch {}` now emits a one-time
+> `console.warn` identifying the (likely cross-origin) failure, so the script
+> no longer fails completely silently — `F12` → Console will show whether the
+> patch applied. This does **not** make a cross-origin embed patchable; if the
+> warning fires, a parent-document strategy is the next step. Same-origin
+> embeds are fixed by the timing change below (#7).
 
 ---
 
@@ -163,6 +170,11 @@ The hover-to-highlight-on-map feature reaches into the map iframe and uses two p
 
 ### 7. New Yorker — patch timing on dynamic iframes
 `patchIframeFocus` is invoked the moment an `<iframe>` node is added (lines 50-65). At that point `contentWindow` may still be the initial `about:blank` document; when the iframe navigates to its real `src`, the window (and its `HTMLElement.prototype`) is replaced, discarding the patch. Even in the same-origin case, patch-on-add can bind to the wrong window. Consider patching on the iframe's `load` event.
+
+> **✅ Fixed in v1.3.** `patchIframeFocus` now applies the patch immediately
+> **and** re-applies it on the iframe's `load` event (hooked once via a
+> `__focusLoadHooked` guard), so a same-origin player that swaps its
+> `contentWindow` after navigation is re-patched against the live window.
 
 ### 8. AI Copy Cleaner — description doesn't mention Claude
 `@match https://claude.ai/*` is present (line 15) but `@description` (line 5) and the README describe only "Gemini/ChatGPT/NeetCode." Update the description so the supported-site list matches the `@match` rules.

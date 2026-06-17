@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fix New Yorker Audio Player Scroll
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.2
+// @version      1.3
 // @description  Prevents the New Yorker page from scrolling back to the audio player when media keys are pressed.
 // @author       wilmtang
 // @license      MIT
@@ -18,8 +18,22 @@
 (function() {
     'use strict';
 
-    // Function to patch the iframe's focus method
+    // Entry point: patch now, and again on the iframe's next load.
+    // When an iframe is first inserted, contentWindow is the initial
+    // about:blank document; it is replaced (with a fresh HTMLElement
+    // prototype) once the iframe navigates to the real player src, which
+    // would discard a patch applied too early. Re-patching on 'load' fixes
+    // that timing window.
     function patchIframeFocus(iframe) {
+        if (!iframe) return;
+        applyFocusPatch(iframe);
+        if (!iframe.__focusLoadHooked) {
+            iframe.__focusLoadHooked = true;
+            iframe.addEventListener('load', () => applyFocusPatch(iframe));
+        }
+    }
+
+    function applyFocusPatch(iframe) {
         try {
             const iframeWin = iframe.contentWindow;
             // If already patched or not accessible, skip
@@ -36,7 +50,17 @@
             iframeWin.__focusPatched = true;
             console.log("[New Yorker Audio Fix] Patched audio player iframe focus to prevent scroll.");
         } catch (e) {
-            // Ignore cross-origin errors if any
+            // Most likely a cross-origin embed: we cannot reach into its
+            // window object. Surface it once instead of failing silently, so
+            // it's clear why scroll-prevention isn't taking effect here.
+            if (!iframe.__focusPatchWarned) {
+                iframe.__focusPatchWarned = true;
+                console.warn(
+                    "[New Yorker Audio Fix] Could not patch the audio player iframe " +
+                    "(likely cross-origin); scroll-prevention may not apply on this embed.",
+                    e && e.name ? "(" + e.name + ")" : ""
+                );
+            }
         }
     }
 
