@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AI Copy Cleaner for Obsidian
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.3
-// @description  Copy Gemini/ChatGPT/NeetCode content as tight Markdown/HTML so Obsidian keeps lists tight and pastes math as $...$.
+// @version      0.1.4
+// @description  Copy Gemini/ChatGPT/Claude/NeetCode answers as tight Markdown/HTML so Obsidian keeps lists tight and pastes math as $...$.
 // @author       wilmtang
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/AICopyCleaner
@@ -212,7 +212,14 @@
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || isEditableSelection(selection)) return;
 
-    const payload = buildClipboardPayload(selection);
+    const fragment = selectionToFragment(selection);
+    // Leave plain selections to the native clipboard; only take over copies
+    // that actually contain the structure this script exists to fix. The
+    // Alt+Shift+C shortcut bypasses this gate and always reformats, for when
+    // the user explicitly asks for it.
+    if (!fragmentHasRichContent(fragment)) return;
+
+    const payload = buildClipboardPayloadFromFragment(fragment);
     if (!payload) return;
     if (!event.clipboardData) return;
 
@@ -225,12 +232,20 @@
   }
 
   function buildClipboardPayload(selection) {
+    return buildClipboardPayloadFromFragment(selectionToFragment(selection));
+  }
+
+  function selectionToFragment(selection) {
     const fragment = document.createDocumentFragment();
 
     for (let index = 0; index < selection.rangeCount; index += 1) {
       fragment.appendChild(selection.getRangeAt(index).cloneContents());
     }
 
+    return fragment;
+  }
+
+  function buildClipboardPayloadFromFragment(fragment) {
     const markdown = cleanupMarkdown(nodesToMarkdown(Array.from(fragment.childNodes), { tight: false }));
     if (!markdown) return null;
 
@@ -238,6 +253,27 @@
       markdown,
       html: normalizeHtml(nodesToHtml(Array.from(fragment.childNodes), { inListItem: false })),
     };
+  }
+
+  // Limits the automatic copy takeover to selections that contain the
+  // structure this script is meant to reformat (lists, code, tables,
+  // headings, blockquotes, links, sub/sup) or math. Bare text and prose fall
+  // through to the browser's native copy, so selecting UI labels or ordinary
+  // text elsewhere on the page is left untouched.
+  const RICH_CONTENT_SELECTOR =
+    'pre,code,ul,ol,li,table,blockquote,h1,h2,h3,h4,h5,h6,a[href],sup,sub';
+
+  function fragmentHasRichContent(fragment) {
+    return Array.from(fragment.childNodes).some((node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return false;
+      if (isMathElement(node)) return true;
+      if (node.matches && node.matches(RICH_CONTENT_SELECTOR)) return true;
+      if (node.querySelector) {
+        if (node.querySelector(RICH_CONTENT_SELECTOR)) return true;
+        if (node.querySelector(MATH_SELECTOR)) return true;
+      }
+      return false;
+    });
   }
 
   function isEditableSelection(selection) {

@@ -14,10 +14,10 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | 🟡 Mitigated (v1.3) |
 | 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ✅ Fixed (v1.5.0) |
 | 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ✅ Fixed (v2.6) |
-| 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ⬜ Open |
+| 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ✅ Fixed (v0.1.4) |
 | 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
 | 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ✅ Fixed (v1.3) |
-| 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ⬜ Open |
+| 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ✅ Fixed (v0.1.4) |
 | 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
 | 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | ⬜ Open |
 | 11 | Medium | Google Maps | Script intermittently not injected on first load (no Tampermonkey badge), works after refresh | ✅ Fixed (v1.6.0) |
@@ -160,6 +160,15 @@ On every matched site the script intercepts all copy events in the capture phase
 
 **Suggested action:** Consider scoping the `copy` listener to the known content containers per site, or gate the auto-rewrite behind the explicit Alt+Shift+C shortcut (already implemented) and leave plain Ctrl/Cmd+C untouched.
 
+> **✅ Fixed in v0.1.4.** The passive `copy` handler now only takes over when
+> the selection actually contains the structure this script exists to fix —
+> lists, code, tables, headings, blockquotes, links, sub/sup, or math
+> (`fragmentHasRichContent`). Plain text, bold UI labels, and bare prose fall
+> through to the native clipboard untouched. The explicit **Alt+Shift+C**
+> shortcut still always reformats. Verified with an 11-case jsdom test
+> (plain/label/prose → pass-through; list/code/link/heading/table/math/quote →
+> reformat).
+
 ### 6. Peakbagger — map-hover depends on undocumented iframe globals
 
 **File:** `Peakbagger/Peakbagger GPX Analyzer.user.js:449-452`
@@ -208,6 +217,11 @@ A missing badge means Tampermonkey did not inject the script for that document �
 
 ### 8. AI Copy Cleaner — description doesn't mention Claude
 `@match https://claude.ai/*` is present (line 15) but `@description` (line 5) and the README describe only "Gemini/ChatGPT/NeetCode." Update the description so the supported-site list matches the `@match` rules.
+
+> **✅ Fixed in v0.1.4.** `@description` now reads
+> "Gemini/ChatGPT/Claude/NeetCode," matching all five `@match` hosts
+> (`gemini.google.com`, `chatgpt.com`, `chat.openai.com`, `claude.ai`,
+> `neetcode.io`). The root README is reconciled in the final docs pass.
 
 ### 9. New Yorker — name/file mismatch
 The file and folder are `Newyorker No Auto Scroll.user.js`, but `@name`, the script README, and the root README all use "Fix New Yorker Audio Player Scroll." Functionally harmless, but the filename is the odd one out; rename for consistency or note it intentionally.
