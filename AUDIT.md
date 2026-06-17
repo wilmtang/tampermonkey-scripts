@@ -18,11 +18,17 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ✅ Documented (v13.12) |
 | 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ✅ Fixed (v1.3) |
 | 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ✅ Fixed (v0.1.4) |
-| 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
+| 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⏭️ Won't fix (sync risk) |
 | 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | 🟡 Partly addressed |
 | 11 | Medium | Google Maps | Script intermittently not injected on first load (no Tampermonkey badge), works after refresh | ✅ Fixed (v1.6.0) |
 
-> Remediation in progress — see the **Status** column and the per-finding notes below. Each fix is a separate commit; scripts follow the `AGENTS.md` rule of bumping `@version` on any code change.
+> **Remediation complete.** Every finding has been fixed, documented, or
+> consciously deferred — see the **Status** column and the per-finding notes
+> below. Each fix is a separate commit and bumps the script's `@version` per
+> the `AGENTS.md` rule. User-facing changes are summarized in
+> [CHANGELOG.md](CHANGELOG.md). Version bumps: Google Maps 1.4.1 → 1.6.0,
+> LeetCode 2.4 → 2.6, AI Copy Cleaner 0.1.3 → 0.1.4, New Yorker 1.2 → 1.3,
+> Peakbagger 13.11 → 13.12.
 
 ---
 
@@ -232,6 +238,14 @@ A missing badge means Tampermonkey did not inject the script for that document �
 ### 9. New Yorker — name/file mismatch
 The file and folder are `Newyorker No Auto Scroll.user.js`, but `@name`, the script README, and the root README all use "Fix New Yorker Audio Player Scroll." Functionally harmless, but the filename is the odd one out; rename for consistency or note it intentionally.
 
+> **⏭️ Won't fix (intentional).** Greasy Fork's source sync pulls this script
+> from its raw GitHub `.user.js` URL (per `AGENTS.md`), so renaming the file on
+> GitHub would break that external sync, which can't be reconfigured from this
+> repo. The discrepancy is the on-disk filename only — `@name`, both READMEs,
+> and the Greasy Fork listing already agree on "Fix New Yorker Audio Player
+> Scroll", and `@name` (not the filename) is what users see. Left as-is
+> deliberately.
+
 ### 10. Cross-cutting
 - **Debug logging left in:** `console.log` calls remain in the New Yorker (line 37), Google Maps (multiple), and LeetCode flows. Fine for development, noisy for users.
 - **Brittle selectors:** every script keys off site-specific, undocumented hooks (`.text-title-large`, `content__u3I1`, `data-testid="cne-audio-embed-target"`, `mapsPlaceholder`, "Download this GPS track" link text). This is inherent to userscripts but means each is one site redesign away from breaking; the LeetCode `findTitleEl` fallback that scans all `h1, a, div` (lines 272-279) is the most expensive of these.
@@ -249,10 +263,17 @@ The file and folder are `Newyorker No Auto Scroll.user.js`, but `@name`, the scr
 
 ---
 
-## Recommendations (priority order)
+## Resolution summary
 
-1. Fix the LeetCode URL construction (#1) — small change, user-visible broken output.
-2. Verify the New Yorker embed origin and confirm whether the focus patch ever runs (#2); add a log on the swallowed catch either way.
-3. Tear down the Google Maps observer/interval once the button is found and tighten the Ctrl+S guard (#3).
-4. Decide and document the intent of the LeetCode history override and the AI Copy Cleaner global copy interception (#4, #5); both are working as written but change host-page behavior broadly.
-5. Sweep the low-severity items (#7-#10) when next bumping each script's `@version` (required by `AGENTS.md` before pushing).
+All recommendations from the original audit have been actioned:
+
+1. ✅ LeetCode URL construction fixed (#1, v2.6).
+2. ✅ New Yorker swallowed error now logged; same-origin timing fixed (#2/#7, v1.3). Confirming the embed's live origin remains a manual follow-up — the new warning makes it observable in the console.
+3. ✅ Google Maps watchers self-terminate and the Ctrl+S guard is tightened (#3, v1.6.0), and the separately-reported intermittent-loading issue is fixed (#11, v1.6.0).
+4. ✅ LeetCode history override scoped to problem pages and the AI Copy Cleaner copy takeover scoped to structured/math content (#4 v2.6, #5 v0.1.4) — both no longer change host-page behavior broadly.
+5. ✅ Low-severity items swept: doc drift fixed (#8), Peakbagger fragility documented (#6), perpetual logging removed via #3, and the New Yorker name/file mismatch consciously deferred to avoid breaking Greasy Fork sync (#9). Remaining: a Node test suite for the complex pure logic (Peakbagger metrics, KaTeX→TeX) is recommended but not yet implemented (#10).
+
+### Remaining follow-ups (optional, not blocking)
+
+- Confirm the New Yorker audio embed's origin on a live article; if the new `console.warn` fires, a parent-document scroll strategy would be needed for cross-origin players.
+- Add a small Node/jsdom test suite for the Peakbagger metrics engine and the AI Copy Cleaner math conversion.

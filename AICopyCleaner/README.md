@@ -21,12 +21,14 @@ When Obsidian receives that HTML, it often treats the `<p>` inside `<li>` as a l
 
 ## How The Script Works
 
-`AI Copy Cleaner for Obsidian.user.js` intercepts normal copy events on Gemini, ChatGPT, ChatGPT legacy URLs, Claude, and NeetCode. For non-editable selections it replaces the clipboard payload with:
+`AI Copy Cleaner for Obsidian.user.js` intercepts normal copy events on Gemini, ChatGPT, ChatGPT legacy URLs, Claude, and NeetCode. When a non-editable selection actually contains structure worth reformatting — lists, code, tables, headings, blockquotes, links, sub/sup, or math — it replaces the clipboard payload with:
 
 - tight Markdown in `text/plain` and `text/markdown`
 - simplified tight HTML in `text/html`
 
 That means normal paste and paste-with-matching-style both get list markup that Obsidian can render without the stray blank lines.
+
+Selections that are just plain text or prose are left to the browser's native copy, so copying UI labels or ordinary text elsewhere on the page is untouched. To force the cleaner on any selection regardless, use the `Option+Shift+C` shortcut below.
 
 ## Use
 
