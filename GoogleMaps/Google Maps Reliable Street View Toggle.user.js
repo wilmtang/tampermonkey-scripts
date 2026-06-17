@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Maps Reliable Street View Toggle
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.5.0
+// @version      1.6.0
 // @description  Toggle the Google Maps Street View layer with Ctrl+S.
 // @author       wilmtang
 // @license      MIT
@@ -9,11 +9,12 @@
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/GoogleMaps/Google%20Maps%20Reliable%20Street%20View%20Toggle.user.js
 // @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/GoogleMaps/Google%20Maps%20Reliable%20Street%20View%20Toggle.user.js
-// @match        https://www.google.com/maps*
-// @match        https://google.com/maps*
-// @include      /^https:\/\/(www\.)?google\.[^/]+\/maps(?:[/?#].*)?$/
+// @match        *://www.google.com/maps*
+// @match        *://google.com/maps*
+// @match        *://maps.google.com/*
+// @include      /^https?:\/\/(www\.|maps\.)?google\.[^/]+\/maps(?:[/?#].*)?$/
 // @run-at       document-start
-// @grant        none
+// @grant        GM_addStyle
 // ==/UserScript==
 
 (function () {
@@ -160,6 +161,16 @@
 
   document.addEventListener('keydown', handleShortcut, true);
   startWatchers();
+
+  // If the tab is restored from the back/forward cache, the warm-up watchers
+  // may already have been torn down (and the cached button may be stale), so
+  // re-arm them to keep Ctrl+S responsive.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      streetViewButton = null;
+      startWatchers();
+    }
+  });
 
   console.log(`${LOG_PREFIX} loaded on ${window.location.href}. Press Ctrl+S to toggle the Street View layer.`);
 })();

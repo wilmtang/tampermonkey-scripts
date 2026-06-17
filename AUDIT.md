@@ -20,6 +20,7 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ⬜ Open |
 | 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
 | 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | ⬜ Open |
+| 11 | Medium | Google Maps | Script intermittently not injected on first load (no Tampermonkey badge), works after refresh | ✅ Fixed (v1.6.0) |
 
 > Remediation in progress — see the **Status** column and the per-finding notes below. Each fix is a separate commit; scripts follow the `AGENTS.md` rule of bumping `@version` on any code change.
 
@@ -172,6 +173,26 @@ if (activeElements.length > 0 && iframeWin && iframeWin.mapsPlaceholder && ifram
 The hover-to-highlight-on-map feature reaches into the map iframe and uses two private Peakbagger internals: the Leaflet instance `mapsPlaceholder` and the global `L`. These are same-origin (so accessible) but entirely undocumented and outside the script's control; any rename on Peakbagger's side disables the feature with no error. The condition fails closed (no marker), so it degrades silently rather than crashing — good — but it is fragile. The GPX `fetch` (line 584) and chart also assume same-origin and a non-blocking CSP; failure is caught and shown as "Error parsing GPX file."
 
 **Suggested action:** No fix required, but document the dependency on `mapsPlaceholder`/`L` so the fragility is known, and keep the existing guards.
+
+### 11. Google Maps — intermittently not injected until refresh
+
+**File:** `GoogleMaps/Google Maps Reliable Street View Toggle.user.js:12-16` (metadata)
+**Symptom (reported):** On some visits Tampermonkey shows **no count badge** on its toolbar icon (the script never ran); reloading the same page makes the badge show `1` and the script works.
+
+A missing badge means Tampermonkey did not inject the script for that document — i.e. it didn't match/inject at navigation time. The script's own logic can't be the cause, because if it had been injected the badge would show regardless of any runtime error. So the investigation focused on *injection*, and found three contributing causes, two of which are fixable in the script:
+
+1. **Page-context injection vs. Google's CSP (primary, fixable).** With `@grant none`, Tampermonkey runs the script in the **page world**, historically by inserting a `<script>` element. Google Maps ships a strict `Content-Security-Policy`, and that injection can be refused — intermittently, depending on load timing and cache state — so the script silently never starts. A warm reload often slips through. Switching to a sandboxed grant (`@grant GM_addStyle`) makes Tampermonkey run the script in its **isolated content-script world**, which is not subject to the page CSP. This script only touches the DOM (keydown listener, `querySelector`, `button.click()`, `MutationObserver`) and never needs page JavaScript globals, so the move is behavior-neutral and removes the CSP failure mode.
+
+2. **Entry-URL coverage gaps (fixable).** `@match https://www.google.com/maps*` (and the `google.com` twin) did not cover `maps.google.com`, the `http→https` upgrade, or non-`.com` country domains except through the single `@include` regex. When Maps is opened via one of those hosts the initial document doesn't match, and if the app then rewrites the URL via the History API (same document, no new load) Tampermonkey never re-evaluates — so it stays uninjected until a refresh lands directly on a matching URL. Coverage is now broadened: `*://maps.google.com/*`, scheme-agnostic `*://`, and an `@include` that also accepts the `maps.` subdomain.
+
+3. **Prerender / back-forward cache (browser-level, not script-fixable).** Chrome may *prerender* `google.com/maps` from the omnibox or restore it from the bfcache. Userscript managers can fail to inject `document-start` scripts into a prerendered document, and a manual refresh (a real navigation) injects normally — which exactly matches "didn't load, refresh fixed it." This is a known userscript-manager/browser limitation that the script cannot fully control. As a partial mitigation the script now re-arms on `pageshow` with `event.persisted` (bfcache restores), and users who still see misses can disable Chrome's page preloading (Settings → Performance → *Preload pages*).
+
+> **✅ Fixed in v1.6.0.** `@grant none` → `@grant GM_addStyle` (isolated-world,
+> CSP-immune execution); `@match` broadened to `*://www.google.com/maps*`,
+> `*://google.com/maps*`, `*://maps.google.com/*`; `@include` now allows
+> `https?` and the `maps.` subdomain; added a `pageshow`/`persisted` re-arm.
+> `@run-at document-start` is retained. Residual misses, if any, are the
+> prerender case (cause #3) and are documented for users in the script README.
 
 ---
 
