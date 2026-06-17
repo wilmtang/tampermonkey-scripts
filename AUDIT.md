@@ -13,7 +13,7 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | 1 | High | LeetCode | Copied Markdown URL is malformed (double slash) on any tab except `/description/` | ✅ Fixed (v2.5) |
 | 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | ⬜ Open |
 | 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ⬜ Open |
-| 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ⬜ Open |
+| 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ✅ Fixed (v2.6) |
 | 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ⬜ Open |
 | 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
 | 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ⬜ Open |
@@ -117,6 +117,14 @@ win.history.replaceState = function (...args) {
 This deliberately rewrites the page's `history.replaceState` so SPA route changes become real history entries (the script's stated goal — preserving Back). The side effect is that it changes `history` semantics for **all** code on the page, not just this script: LeetCode (or any library) that uses `replaceState` to update state *without* adding history now adds entries, which can bloat history and cause extra Back presses or unexpected navigation. The shim is also installed twice (directly via `unsafeWindow` and via an injected `<script>`); the `__lcCopyTitleMarkdownHistoryShimInstalled` guard makes the second a no-op, so it's harmless but redundant.
 
 **Suggested action:** Keep if the Back-button benefit outweighs the risk, but document it and consider scoping the pushState conversion to only `/problems/` path changes. Remove the redundant second installation path.
+
+> **✅ Fixed in v2.6.** The `replaceState`→`pushState` promotion is now gated by
+> an `isProblemUrl()` check on **both** the current and target URLs, so native
+> `replaceState` semantics are preserved everywhere except problem-to-problem
+> navigation (where the Back-button fix is actually needed). The redundant
+> inline-`<script>` installation path was removed: it was a no-op after the
+> `unsafeWindow` install (guard flag) and is blocked by LeetCode's CSP anyway,
+> so it only emitted console errors.
 
 ### 5. AI Copy Cleaner — capture-phase interception rewrites every copy
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      2.5
+// @version      2.6
 // @description  Adds LeetCode copy helpers and preserves SPA browser history
 // @author       wilmtang
 // @license      MIT
@@ -364,6 +364,14 @@
             return new win.URL(args[2], win.location.href).href;
         }
 
+        function isProblemUrl(href) {
+            try {
+                return /\/problems\//.test(new win.URL(href, win.location.href).pathname);
+            } catch (_err) {
+                return false;
+            }
+        }
+
         win.history.pushState = function (...args) {
             const result = pushState(...args);
             notify();
@@ -371,12 +379,19 @@
         };
 
         // LeetCode sometimes changes SPA routes with replaceState, which prevents
-        // Back from returning to the previous URL. Push distinct URLs instead.
+        // Back from returning to the previous URL. Promote those to pushState so
+        // the Back button works -- but ONLY between problem pages, so we don't
+        // alter replaceState semantics (and bloat history) for the rest of the
+        // site or for other scripts running on the page.
         win.history.replaceState = function (...args) {
             const targetUrl = getUrlFromHistoryArgs(args);
-            const result = targetUrl && targetUrl !== win.location.href && !isHandlingPopstate
-                ? pushState(...args)
-                : replaceState(...args);
+            const promoteToPush =
+                targetUrl &&
+                targetUrl !== win.location.href &&
+                !isHandlingPopstate &&
+                isProblemUrl(targetUrl) &&
+                isProblemUrl(win.location.href);
+            const result = promoteToPush ? pushState(...args) : replaceState(...args);
             notify();
             return result;
         };
@@ -392,21 +407,19 @@
     }
 
     function installPageHistoryShim() {
+        // Patch the real page window's History API. With @grant unsafeWindow
+        // this runs at document-start, before LeetCode's router captures
+        // history.pushState, so our wrapper is the one it calls.
+        //
+        // A previous version ALSO injected an inline <script> that re-ran this
+        // on window. That path was redundant (the install guard made it a
+        // no-op after the unsafeWindow call) and is blocked outright by
+        // LeetCode's Content-Security-Policy, so it only produced console
+        // noise. Removed.
         try {
             const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
             installHistoryShimOnWindow(pageWindow, URL_CHANGE_EVENT);
         } catch (_err) {}
-
-        const root = document.documentElement || document.head || document.body;
-        if (!root) {
-            window.addEventListener('DOMContentLoaded', installPageHistoryShim, { once: true });
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.textContent = `(${installHistoryShimOnWindow.toString()})(window, ${JSON.stringify(URL_CHANGE_EVENT)});`;
-        root.appendChild(script);
-        script.remove();
     }
 
     installPageHistoryShim();
