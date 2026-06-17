@@ -3,6 +3,15 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-06-17 — onX Mountain Project Link
+
+### onX Mountain Project Link — 0.1.0
+
+- **New local script.** Adds an "Open on Mountain Project" link to onX
+  Backcountry Mountain Project area and route pages. The script preserves onX's
+  existing "From Mountain Project" attribution panel and adds a separate
+  external link button.
+
 ## 2026-06-16 — audit fixes
 
 A code audit ([AUDIT.md](AUDIT.md)) reviewed all five scripts; the fixes below

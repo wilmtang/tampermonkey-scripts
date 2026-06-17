@@ -28,3 +28,5 @@ If the user says yes, follow the existing pattern:
 8. Add Greasy Fork install links and dynamic Shields install-count badges to the root README and script README.
 
 For code changes to an existing script, bump `@version` before pushing. Greasy Fork sync and userscript manager updates depend on the version changing.
+
+## Imported Claude Cowork project instructions
