@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Maps Reliable Street View Toggle
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.4.1
+// @version      1.5.0
 // @description  Toggle the Google Maps Street View layer with Ctrl+S.
 // @author       wilmtang
 // @license      MIT
@@ -33,6 +33,9 @@
 
   let streetViewButton = null;
   let domObserver = null;
+  let scanIntervalId = null;
+  let watchersDeadline = 0;
+  const WATCH_MAX_MS = 60000;
 
   function getControlLabel(el) {
     return [
@@ -82,9 +85,36 @@
     if (found) {
       streetViewButton = found;
       console.log(`${LOG_PREFIX} Street View button detected (${source}).`);
+      stopWatchers(); // found it -- stop the perpetual polling/observing
     }
 
     return streetViewButton;
+  }
+
+  // The button is also located on demand in handleShortcut, so these watchers
+  // are only a warm-up. They stop as soon as the button is found and, as a
+  // safety net, give up after WATCH_MAX_MS so neither the 500ms interval nor
+  // the document-wide MutationObserver runs for the life of the tab.
+  function stopWatchers() {
+    if (domObserver) {
+      domObserver.disconnect();
+      domObserver = null;
+    }
+    if (scanIntervalId !== null) {
+      clearInterval(scanIntervalId);
+      scanIntervalId = null;
+    }
+  }
+
+  function startWatchers() {
+    watchersDeadline = Date.now() + WATCH_MAX_MS;
+    if (!domObserver) startObserver();
+    if (scanIntervalId === null) {
+      scanIntervalId = window.setInterval(() => {
+        if (cacheStreetViewButton('interval')) return;      // found -> stops itself
+        if (Date.now() > watchersDeadline) stopWatchers();  // give up perpetual scan
+      }, 500);
+    }
   }
 
   function simulateClick(btn) {
@@ -92,21 +122,24 @@
   }
 
   function handleShortcut(e) {
-    if (!e.ctrlKey || e.key.toLowerCase() !== 's') {
-      return;
-    }
+    // Plain Ctrl+S only. Let Ctrl+Shift+S, Ctrl+Alt+S and Cmd+S fall through
+    // to the browser instead of over-triggering the toggle.
+    if (!e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    if ((e.key || '').toLowerCase() !== 's') return;
 
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
 
     streetViewButton = findStreetViewButton();
-    console.log(`${LOG_PREFIX} Ctrl+S triggered.`);
 
     if (streetViewButton) {
       simulateClick(streetViewButton);
       console.log(`${LOG_PREFIX} Street View toggled via Ctrl+S.`);
     } else {
+      // Not located yet; restart the warm-up watchers so it is ready next
+      // time (they stop themselves again once it is found).
+      startWatchers();
       console.log(`${LOG_PREFIX} Street View button not ready.`);
     }
   }
@@ -126,8 +159,7 @@
   }
 
   document.addEventListener('keydown', handleShortcut, true);
-  window.setInterval(() => cacheStreetViewButton('interval'), 500);
-  startObserver();
+  startWatchers();
 
   console.log(`${LOG_PREFIX} loaded on ${window.location.href}. Press Ctrl+S to toggle the Street View layer.`);
 })();

@@ -12,7 +12,7 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 |---|----------|--------|-------|--------|
 | 1 | High | LeetCode | Copied Markdown URL is malformed (double slash) on any tab except `/description/` | ✅ Fixed (v2.5) |
 | 2 | High | New Yorker | Focus patch silently no-ops on a cross-origin embed; core feature likely never runs | 🟡 Mitigated (v1.3) |
-| 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ⬜ Open |
+| 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ✅ Fixed (v1.5.0) |
 | 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ✅ Fixed (v2.6) |
 | 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ⬜ Open |
 | 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
@@ -105,6 +105,15 @@ Two always-on watchers run for the life of the tab on one of the heaviest, most-
 Separately, `handleShortcut` calls `e.preventDefault()` for **any** Ctrl+S (lines 99-101) before checking whether the button exists, so the browser's native "Save page" is permanently disabled on Maps even when the toggle isn't available. The check also doesn't exclude other modifiers, so Ctrl+Alt+S triggers it too.
 
 **Suggested fix:** Disconnect the observer and `clearInterval` once the button is found (re-arm on URL change). Only `preventDefault()` after confirming a Ctrl+S that you will act on, and guard against extra modifiers (`!e.altKey && !e.metaKey && !e.shiftKey`).
+
+> **✅ Fixed in v1.5.0.** The interval and observer are now a *warm-up* only:
+> `stopWatchers()` disconnects both the moment the button is found, and a
+> 60s `watchersDeadline` guarantees they stop even if it never appears.
+> `handleShortcut` already locates the button on demand, so the shortcut works
+> with the watchers off and simply re-arms them (`startWatchers()`) if a press
+> finds nothing. The shortcut now also requires *plain* Ctrl+S
+> (`!e.altKey && !e.metaKey && !e.shiftKey`), letting Ctrl+Shift+S / Ctrl+Alt+S
+> / Cmd+S pass through to the browser.
 
 ### 4. LeetCode — global `replaceState`→`pushState` override
 
