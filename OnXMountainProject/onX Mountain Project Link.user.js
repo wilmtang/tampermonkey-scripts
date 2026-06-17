@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         onX Mountain Project Link
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.1
+// @version      0.1.2
 // @description  Adds direct Mountain Project links to onX Backcountry Mountain Project area and route pages.
 // @author       wilmtang
 // @license      MIT
@@ -58,6 +58,36 @@
     };
   }
 
+  function createIcon() {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', `${SCRIPT_PREFIX}__icon`);
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    const paths = [
+      'M14 4h6v6',
+      'M20 4 11 13',
+      'M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+    ];
+
+    for (const d of paths) {
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', d);
+      svg.append(path);
+    }
+
+    return svg;
+  }
+
   function createLink(target) {
     const link = document.createElement('a');
     link.id = LINK_ID;
@@ -70,7 +100,7 @@
 
     const text = document.createElement('span');
     text.textContent = 'Open on Mountain Project';
-    link.append(text);
+    link.append(text, createIcon());
 
     return link;
   }
@@ -158,36 +188,49 @@
   addStyle(`
     .${SCRIPT_PREFIX}__open-link {
       align-items: center;
-      background: #f3f4f5;
+      background: #0b8043;
       border: 0;
-      border-radius: 999px;
+      border-radius: 100px;
       box-sizing: border-box;
-      color: #2b2b2b;
+      color: #ffffff;
       cursor: pointer;
       display: inline-flex;
-      font: inherit;
-      font-size: 14px;
-      font-weight: 700;
+      font-family: Roboto, system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
       gap: 6px;
+      justify-content: center;
+      letter-spacing: 0.2px;
       line-height: 1;
-      margin-left: 8px;
-      min-height: 32px;
-      padding: 0 13px;
+      margin: 2px 20px 12px;
+      min-height: 30px;
+      padding: 0 14px;
       text-decoration: none;
-      vertical-align: middle;
+      transition: background-color 0.15s ease;
       white-space: nowrap;
     }
 
-    .${SCRIPT_PREFIX}__open-link:hover,
-    .${SCRIPT_PREFIX}__open-link:focus {
-      background: #e5e8ea;
-      color: #111;
-      outline: none;
+    .${SCRIPT_PREFIX}__open-link:hover {
+      background: #0a6e3a;
+      color: #ffffff;
       text-decoration: none;
     }
 
+    .${SCRIPT_PREFIX}__open-link:active {
+      background: #095f32;
+    }
+
+    .${SCRIPT_PREFIX}__open-link:focus {
+      outline: none;
+    }
+
     .${SCRIPT_PREFIX}__open-link:focus-visible {
-      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.35);
+      background: #0a6e3a;
+      box-shadow: 0 0 0 3px rgba(11, 128, 67, 0.4);
+    }
+
+    .${SCRIPT_PREFIX}__icon {
+      flex: none;
     }
   `);
 
