@@ -15,11 +15,11 @@ All five scripts pass `node --check` (no syntax errors), and `.DS_Store` is corr
 | 3 | Medium | Google Maps | Permanent 500ms polling + whole-document MutationObserver; unconditional Ctrl+S hijack | ✅ Fixed (v1.5.0) |
 | 4 | Medium | LeetCode | Global `replaceState`→`pushState` override mutates site routing for all code on the page | ✅ Fixed (v2.6) |
 | 5 | Medium | AI Copy Cleaner | Capture-phase copy interception rewrites *every* copy site-wide, including non-content | ✅ Fixed (v0.1.4) |
-| 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ⬜ Open |
+| 6 | Medium | Peakbagger | Map-hover feature depends on undocumented iframe globals; degrades silently | ✅ Documented (v13.12) |
 | 7 | Low | New Yorker | Patch may bind to the iframe's pre-navigation window (timing) | ✅ Fixed (v1.3) |
 | 8 | Low | AI Copy Cleaner | `@match claude.ai` not reflected in `@description`; doc drift | ✅ Fixed (v0.1.4) |
 | 9 | Low | New Yorker | Filename/folder name disagrees with `@name` | ⬜ Open |
-| 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | ⬜ Open |
+| 10 | Low | All | Debug `console.log` left in; brittle site-specific selectors; no tests | 🟡 Partly addressed |
 | 11 | Medium | Google Maps | Script intermittently not injected on first load (no Tampermonkey badge), works after refresh | ✅ Fixed (v1.6.0) |
 
 > Remediation in progress — see the **Status** column and the per-finding notes below. Each fix is a separate commit; scripts follow the `AGENTS.md` rule of bumping `@version` on any code change.
@@ -183,6 +183,12 @@ The hover-to-highlight-on-map feature reaches into the map iframe and uses two p
 
 **Suggested action:** No fix required, but document the dependency on `mapsPlaceholder`/`L` so the fragility is known, and keep the existing guards.
 
+> **✅ Documented in v13.12.** Added an inline `FRAGILE DEPENDENCY` comment at
+> the `onHover` map-integration site explaining the reliance on Peakbagger's
+> private `mapsPlaceholder`/`L` globals and the fail-closed behaviour, plus a
+> comment on `computeAdjustedDistances` describing the provisional-distance
+> back-fill and its small trailing under-count. No behavioural change.
+
 ### 11. Google Maps — intermittently not injected until refresh
 
 **File:** `GoogleMaps/Google Maps Reliable Street View Toggle.user.js:12-16` (metadata)
@@ -231,6 +237,15 @@ The file and folder are `Newyorker No Auto Scroll.user.js`, but `@name`, the scr
 - **Brittle selectors:** every script keys off site-specific, undocumented hooks (`.text-title-large`, `content__u3I1`, `data-testid="cne-audio-embed-target"`, `mapsPlaceholder`, "Download this GPS track" link text). This is inherent to userscripts but means each is one site redesign away from breaking; the LeetCode `findTitleEl` fallback that scans all `h1, a, div` (lines 272-279) is the most expensive of these.
 - **No tests:** the Peakbagger metrics engine (distance de-noising, confirmed-gain state machine, grade window, KaTeX-to-TeX reconstruction in AI Copy Cleaner) is non-trivial pure logic that would benefit from a few unit tests — it can be exercised in Node independently of the DOM.
 - **Minor numeric edge cases (Peakbagger):** trailing points and bad-jump points retain the last confirmed cumulative distance (`distMByIndex`), slightly under-counting distance for those tail segments; very low impact.
+
+> **🟡 Partly addressed.** The worst offender — Google Maps logging on a
+> perpetual 500ms interval — is gone as a side effect of fix #3 (the watchers
+> now stop once the button is found). New Yorker's silent failure now logs a
+> `console.warn` (#2). The remaining points are inherent to userscripts:
+> brittle site selectors are documented in-code (Peakbagger #6), and the
+> complex pure logic (Peakbagger metrics, KaTeX→TeX) remains untested here —
+> it is the best candidate for a small Node test suite and is recommended,
+> not yet implemented.
 
 ---
 

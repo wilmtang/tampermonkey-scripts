@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      13.11
+// @version      13.12
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       wilmtang
 // @license      MIT
@@ -146,6 +146,12 @@
             const isBadJump = elapsedSeconds > 0 && stepM > DIST_CONFIRM_M && stepM / elapsedSeconds > MAX_REASONABLE_SPEED_MPS;
 
             rawDistanceM += stepM;
+            // Provisional: every point starts at the last *confirmed* cumulative
+            // distance and is back-filled to its real value only once the pending
+            // run is confirmed (>= DIST_CONFIRM_M of displacement). Points that
+            // are still pending at the end of the track -- or that were dropped as
+            // bad GPS jumps -- keep this last-confirmed value, which can slightly
+            // under-count distance for a short tail. Acceptable for trail stats.
             distMByIndex[i] = distanceM;
 
             if (isBadJump) {
@@ -446,6 +452,15 @@
                     responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'nearest', intersect: true, axis: 'xy' },
                     onHover: (event, activeElements) => {
+                        // FRAGILE DEPENDENCY: the hover-to-highlight-on-map
+                        // feature reaches into Peakbagger's own MasterMap iframe
+                        // and uses two private, undocumented globals it defines
+                        // there -- the Leaflet instance `mapsPlaceholder` and
+                        // Leaflet itself as `L`. These are same-origin (so
+                        // reachable) but outside our control; if Peakbagger
+                        // renames or restructures them this feature stops
+                        // working. It fails closed (the guard below simply skips
+                        // the marker), so the chart itself is unaffected.
                         const mapIframe = document.querySelector('iframe[src*="MasterMap.aspx"], iframe[src*="mastermap.aspx"]');
                         const iframeWin = mapIframe ? mapIframe.contentWindow : null;
 
