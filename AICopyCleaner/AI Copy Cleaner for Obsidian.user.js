@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         AI Copy Cleaner for Obsidian
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.4
+// @version      0.1.5
 // @description  Copy Gemini/ChatGPT/Claude/NeetCode answers as tight Markdown/HTML so Obsidian keeps lists tight and pastes math as $...$.
 // @author       wilmtang
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/AICopyCleaner
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
-// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/AICopyCleaner/AI%20Copy%20Cleaner%20for%20Obsidian.user.js
-// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/AICopyCleaner/AI%20Copy%20Cleaner%20for%20Obsidian.user.js
+// @updateURL    https://update.greasyfork.org/scripts/583282/AI%20Copy%20Cleaner%20for%20Obsidian.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/583282/AI%20Copy%20Cleaner%20for%20Obsidian.user.js
 // @match        https://gemini.google.com/*
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*

@@ -1,6 +1,7 @@
 # AI Copy Cleaner for Obsidian
 
-[![Install local userscript](https://img.shields.io/badge/install-local%20userscript-blue)](AI%20Copy%20Cleaner%20for%20Obsidian.user.js)
+[![Greasy Fork installs](https://img.shields.io/badge/dynamic/json?label=users&query=$.total_installs&url=https%3A%2F%2Fgreasyfork.org%2Fen%2Fscripts%2F583282.json&color=2ea44f)](https://greasyfork.org/en/scripts/583282-ai-copy-cleaner-for-obsidian)
+[![Install from Greasy Fork](https://img.shields.io/badge/install-Greasy%20Fork-blue)](https://update.greasyfork.org/scripts/583282/AI%20Copy%20Cleaner%20for%20Obsidian.user.js)
 
 A Tampermonkey userscript that cleans copied AI-answer HTML before it reaches Obsidian.
 

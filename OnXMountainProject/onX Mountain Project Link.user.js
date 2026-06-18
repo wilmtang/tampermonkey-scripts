@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         onX Mountain Project Link
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.2
+// @version      0.1.3
 // @description  Adds direct Mountain Project links to onX Backcountry Mountain Project area and route pages.
 // @author       wilmtang
 // @license      MIT
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/OnXMountainProject
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
-// @updateURL    https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/OnXMountainProject/onX%20Mountain%20Project%20Link.user.js
-// @downloadURL  https://raw.githubusercontent.com/wilmtang/tampermonkey-scripts/main/OnXMountainProject/onX%20Mountain%20Project%20Link.user.js
+// @updateURL    https://update.greasyfork.org/scripts/583284/onX%20Mountain%20Project%20Link.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/583284/onX%20Mountain%20Project%20Link.user.js
 // @match        https://webmap.onxmaps.com/backcountry*
 // @run-at       document-idle
 // @grant        GM_addStyle
