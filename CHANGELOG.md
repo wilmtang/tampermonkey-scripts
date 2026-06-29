@@ -3,6 +3,20 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-06-28 — Google Maps double-press fix
+
+### Google Maps Reliable Street View Toggle — 1.6.1 → 1.7.0
+
+- **One `Ctrl+S` reliably toggles now.** Previously the toggle sometimes did
+  nothing and you had to press it twice — most often the first press after
+  returning to the Maps tab from another tab or app. The cause: Google Maps
+  briefly ignores a click on the Street View control while it wakes from
+  background throttling (and during initial load), so the single click was
+  silently dropped. The shortcut now keeps trying for a few seconds until the
+  Street View layer actually changes state, so one press takes effect as soon as
+  Maps is responsive instead of being lost. It stops the instant the layer
+  flips, so it never double-toggles.
+
 ## 2026-06-17 — onX Mountain Project Link
 
 ### onX Mountain Project Link — 0.1.1

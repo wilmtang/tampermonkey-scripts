@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Maps Reliable Street View Toggle
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.6.1
+// @version      1.7.0
 // @description  Toggle the Google Maps Street View layer with Ctrl+S.
 // @author       wilmtang
 // @license      MIT
@@ -122,6 +122,53 @@
     btn.click();
   }
 
+  // True while the Street View imagery layer is on. Google opens its imagery
+  // panel when the layer is enabled; that panel carries the checkbox below, so
+  // its checked state is a reliable read of whether the layer is currently on.
+  function streetViewLayerOn() {
+    const toggle = document.querySelector(
+      'button[role="checkbox"][aria-label="Show images"]'
+    );
+    return !!toggle && toggle.getAttribute('aria-checked') === 'true';
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  // Google Maps sometimes ignores a single click on the Street View control
+  // ("Browse Street View images", i.e. the Pegman). The main case: returning to
+  // the Maps tab after it has been in the background -- Maps is briefly
+  // unresponsive while it wakes from background throttling, so the first click
+  // is silently dropped (this can also happen during initial page load). That
+  // is why one Ctrl+S occasionally did nothing and the toggle had to be pressed
+  // twice. Instead of clicking once, keep clicking until the layer's state
+  // actually flips (or give up). Once a click lands the flip is detected within
+  // a frame and we stop, so it never double-toggles; dropped clicks are
+  // harmless and simply retried.
+  const TOGGLE_DEADLINE_MS = 4000;
+  const TOGGLE_RETRY_MS = 250;
+  let toggleToken = 0;
+
+  async function toggleStreetView() {
+    const myToken = ++toggleToken; // a newer press supersedes this attempt
+    const wasOn = streetViewLayerOn();
+    const deadline = Date.now() + TOGGLE_DEADLINE_MS;
+
+    do {
+      const btn = findStreetViewButton();
+      if (btn) simulateClick(btn);
+      await sleep(TOGGLE_RETRY_MS);
+      if (toggleToken !== myToken) return; // superseded by a later press
+      if (streetViewLayerOn() !== wasOn) {
+        console.log(`${LOG_PREFIX} Street View toggled via Ctrl+S.`);
+        return;
+      }
+    } while (Date.now() < deadline);
+
+    console.log(`${LOG_PREFIX} Street View control not ready; toggle gave up.`);
+  }
+
   function handleShortcut(e) {
     // Plain Ctrl+S only. Let Ctrl+Shift+S, Ctrl+Alt+S and Cmd+S fall through
     // to the browser instead of over-triggering the toggle.
@@ -132,17 +179,7 @@
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    streetViewButton = findStreetViewButton();
-
-    if (streetViewButton) {
-      simulateClick(streetViewButton);
-      console.log(`${LOG_PREFIX} Street View toggled via Ctrl+S.`);
-    } else {
-      // Not located yet; restart the warm-up watchers so it is ready next
-      // time (they stop themselves again once it is found).
-      startWatchers();
-      console.log(`${LOG_PREFIX} Street View button not ready.`);
-    }
+    toggleStreetView();
   }
 
   function startObserver() {
