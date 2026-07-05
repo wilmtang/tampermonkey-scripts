@@ -1,10 +1,13 @@
+// Copyright (C) 2026 wilmtang <wilm.tang@outlook.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // ==UserScript==
 // @name         onX Mountain Project Link
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      0.1.3
+// @version      0.1.4
 // @description  Adds direct Mountain Project links to onX Backcountry Mountain Project area and route pages.
 // @author       wilmtang
-// @license      MIT
+// @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/OnXMountainProject
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/583284/onX%20Mountain%20Project%20Link.meta.js

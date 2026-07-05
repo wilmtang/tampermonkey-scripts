@@ -1,10 +1,13 @@
+// Copyright (C) 2026 wilmtang <wilm.tang@outlook.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // ==UserScript==
 // @name         Peakbagger GPX Analyzer
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      13.12
+// @version      13.13
 // @description  Interactive linear elevation chart by distance and time with persistent settings.
 // @author       wilmtang
-// @license      MIT
+// @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Peakbagger
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/580091/Peakbagger%20GPX%20Analyzer.meta.js

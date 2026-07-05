@@ -1,10 +1,13 @@
+// Copyright (C) 2026 wilmtang <wilm.tang@outlook.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // ==UserScript==
 // @name         LeetCode Copy Title & Markdown
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      2.6
+// @version      2.7
 // @description  Adds LeetCode copy helpers and preserves SPA browser history
 // @author       wilmtang
-// @license      MIT
+// @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Leetcode
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/580093/LeetCode%20Copy%20Title%20%20Markdown.meta.js

@@ -1,10 +1,13 @@
+// Copyright (C) 2026 wilmtang <wilm.tang@outlook.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // ==UserScript==
 // @name         Google Maps Reliable Street View Toggle
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.7.0
+// @version      1.7.1
 // @description  Toggle the Google Maps Street View layer with Ctrl+S.
 // @author       wilmtang
-// @license      MIT
+// @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/GoogleMaps
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/583283/Google%20Maps%20Reliable%20Street%20View%20Toggle.meta.js

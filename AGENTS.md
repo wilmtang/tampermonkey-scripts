@@ -15,7 +15,7 @@ If the user says yes, follow the existing pattern:
    - `@version`
    - `@description`
    - `@author wilmtang`
-   - `@license MIT`
+   - `@license AGPL-3.0-or-later`
    - `@homepageURL`
    - `@supportURL https://github.com/wilmtang/tampermonkey-scripts/issues`
    - `@match`

@@ -1,10 +1,13 @@
+// Copyright (C) 2026 wilmtang <wilm.tang@outlook.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // ==UserScript==
 // @name         Fix New Yorker Audio Player Scroll
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.3
+// @version      1.4
 // @description  Prevents the New Yorker page from scrolling back to the audio player when media keys are pressed.
 // @author       wilmtang
-// @license      MIT
+// @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/NewYorker
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
 // @updateURL    https://update.greasyfork.org/scripts/580092/Fix%20New%20Yorker%20Audio%20Player%20Scroll.meta.js
