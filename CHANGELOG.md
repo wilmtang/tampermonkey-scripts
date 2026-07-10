@@ -3,6 +3,21 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-07-09 — Peakbagger ascent list beta filter
+
+### Peakbagger Ascent Beta Filter — 0.1.0
+
+- **New local script.** Adds a sticky, stackable filter bar to Peakbagger
+  "Ascents of a Peak" pages (`PeakAscents.aspx`). Filter chips — "Has beta"
+  (trip report, GPS track, or link), "Trip report" with an adjustable minimum
+  word count, "GPS track", and "Link" — combine as AND conditions and show live
+  counts plus "Showing x of y ascents". "Has beta" is on by default, hiding
+  bare no-beta entries; all preferences persist in `localStorage`, so they
+  re-apply on every peak and stack on top of Peakbagger's own year/sort/unit
+  URL filters. Years whose ascents are all filtered out collapse, and the
+  condensed no-`y=` view shows a link to the full all-years table instead of
+  filters.
+
 ## 2026-06-28 — Google Maps double-press fix
 
 ### Google Maps Reliable Street View Toggle — 1.6.1 → 1.7.0
