@@ -3,6 +3,16 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-07-09 — Peakbagger scripts moved to a standalone extension
+
+- **Removed** the Peakbagger GPX Analyzer and Peakbagger Ascent Beta Filter
+  userscripts from this repository. Both features now live in the standalone
+  **Better Peakbagger** browser extension (Chrome + Firefox, Manifest V3), which
+  bundles Chart.js locally instead of loading it from a CDN. Feature behavior is
+  unchanged, and preferences (`pb_gpx_unit_pref`, `pbAscentBetaFilter.v1`) carry
+  over since the same page-origin `localStorage` keys are reused. The earlier
+  Peakbagger entries below remain for historical reference.
+
 ## 2026-07-09 — Peakbagger ascent list beta filter
 
 ### Peakbagger Ascent Beta Filter — 0.1.0
