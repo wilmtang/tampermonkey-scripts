@@ -7,9 +7,9 @@ Adds a direct "Open on Mountain Project" link to onX Backcountry pages that show
 
 ## Supported Pages
 
-- Loads on `https://webmap.onxmaps.com/backcountry*` so it works after onX SPA navigation.
-- `https://webmap.onxmaps.com/backcountry/map/mountain-project/areas/...`
-- `https://webmap.onxmaps.com/backcountry/map/mountain-project/routes/...`
+- Loads on `https://backcountry.onxmaps.com/backcountry*` and `https://webmap.onxmaps.com/backcountry*` so it works after onX SPA navigation.
+- `https://backcountry.onxmaps.com/backcountry/map/mountain-project/areas/...` (and `webmap.onxmaps.com`)
+- `https://backcountry.onxmaps.com/backcountry/map/mountain-project/routes/...` (and `webmap.onxmaps.com`)
 
 The script parses the Mountain Project ID from the onX URL and links to Mountain Project's canonical page. Mountain Project redirects ID-only links to the full slug URL, so the script does not need to guess route or area slugs.
 

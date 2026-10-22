@@ -3,6 +3,12 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-10-22 — onX Backcountry domain update
+
+### onX Mountain Project Link — 0.1.4 → 0.1.5
+
+- **Supports `backcountry.onxmaps.com`.** Added `@match https://backcountry.onxmaps.com/backcountry*` alongside `webmap.onxmaps.com` so the script runs on onX Backcountry's current domain.
+
 ## 2026-07-09 — Peakbagger scripts moved to a standalone extension
 
 - **Removed** the Peakbagger GPX Analyzer and Peakbagger Ascent Beta Filter
