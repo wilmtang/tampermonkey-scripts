@@ -29,4 +29,6 @@ If the user says yes, follow the existing pattern:
 
 For code changes to an existing script, bump `@version` before pushing. Greasy Fork sync and userscript manager updates depend on the version changing.
 
-## Imported Claude Cowork project instructions
+## Commit discipline
+
+When making code changes, commit each completed independent unit of work before starting another. Keep every commit focused and do not bundle unrelated changes. Run checks appropriate to the change before committing; do not commit knowingly broken or incomplete work merely to satisfy this rule. Preserve unrelated user-owned working-tree changes unless the user explicitly asks to include them. Commits must follow the explanatory Claude Code style: use a lowercase Conventional Commit subject — `<type>: <concise lowercase summary>` — and add a body only when it records context, constraints, or verification the subject can't convey. When a body is warranted, identify the concrete module-level changes, call out intentionally preserved exceptions or boundaries, and end with the checks actually run and their results. Pass multi-paragraph bodies with repeated `-m` arguments or `-F`; never embed literal `\n` escapes in a shell argument, and inspect `git log -1 --format=raw` before moving on. A parenthesized step label is appropriate only when the work is part of an explicitly numbered migration or plan. Do not claim verification that did not occur.
