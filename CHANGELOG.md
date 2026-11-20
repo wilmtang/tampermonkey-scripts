@@ -5,6 +5,10 @@ repository; Greasy Fork picks up published scripts on the next sync.
 
 ## 2026-11-19 — Spotify Web right-click and copy
 
+### Spotify Web Enable Right-Click and Copy — 1.0.0 → 1.0.1
+
+- **Published on Greasy Fork.** Added `@updateURL` and `@downloadURL` metadata pointing at Greasy Fork (`606378`) so userscript managers auto-update cleanly, with GitHub source/README sync via webhook.
+
 ### Spotify Web Enable Right-Click and Copy — 1.0.0
 
 - **New script.** Restores text selection, copy (`Ctrl+C`/`Cmd+C`), visible native `::selection` highlighting on podcast transcripts, and smart native right-click on `open.spotify.com` while keeping Spotify's custom context menu and interactive controls clean. Disables HTML5 element drag on main titles, Now Playing links, and tracklist rows in Chromium/Safari so drag-to-select works directly across titles and song/artist names.

@@ -1,5 +1,8 @@
 # Spotify Web Enable Right-Click and Copy
 
+[![Greasy Fork installs](https://img.shields.io/badge/dynamic/json?label=users&query=$.total_installs&url=https%3A%2F%2Fgreasyfork.org%2Fen%2Fscripts%2F606378.json&color=2ea44f)](https://greasyfork.org/en/scripts/606378-spotify-web-enable-right-click-and-copy)
+[![Install from Greasy Fork](https://img.shields.io/badge/install-Greasy%20Fork-blue)](https://update.greasyfork.org/scripts/606378/Spotify%20Web%20Enable%20Right-Click%20and%20Copy.user.js)
+
 Restores text selection, copy (`Ctrl+C` / `Cmd+C`), and the native browser right-click context menu on Spotify Web (`https://open.spotify.com/*`) while keeping Spotify's custom context menu intact.
 
 ## Features
@@ -20,4 +23,4 @@ Restores text selection, copy (`Ctrl+C` / `Cmd+C`), and the native browser right
 
 ## Install
 
-[Install the local userscript](Spotify%20Web%20Enable%20Right-Click%20and%20Copy.user.js) with Tampermonkey, Greasemonkey, Violentmonkey, or another compatible userscript manager. *(Greasy Fork install links and badges will be added once published.)*
+[Install from Greasy Fork](https://update.greasyfork.org/scripts/606378/Spotify%20Web%20Enable%20Right-Click%20and%20Copy.user.js) with Tampermonkey, Greasemonkey, Violentmonkey, or another compatible userscript manager.

@@ -4,12 +4,14 @@
 // ==UserScript==
 // @name         Spotify Web Enable Right-Click and Copy
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      1.0.0
+// @version      1.0.1
 // @description  Restores text selection, copy, and native right-click on Spotify Web while keeping Spotify's custom context menu intact.
 // @author       wilmtang
 // @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/Spotify
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
+// @updateURL    https://update.greasyfork.org/scripts/606378/Spotify%20Web%20Enable%20Right-Click%20and%20Copy.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/606378/Spotify%20Web%20Enable%20Right-Click%20and%20Copy.user.js
 // @match        https://open.spotify.com/*
 // @run-at       document-start
 // @grant        GM_addStyle
