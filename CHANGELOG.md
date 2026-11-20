@@ -3,6 +3,12 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-11-19 — Spotify Web right-click and copy
+
+### Spotify Web Enable Right-Click and Copy — 1.0.0
+
+- **New script.** Restores text selection, copy (`Ctrl+C`/`Cmd+C`), visible native `::selection` highlighting on podcast transcripts, and smart native right-click on `open.spotify.com` while keeping Spotify's custom context menu and interactive controls clean. Disables HTML5 element drag on main titles, Now Playing links, and tracklist rows in Chromium/Safari so drag-to-select works directly across titles and song/artist names.
+
 ## 2026-10-22 — onX Backcountry domain update
 
 ### onX Mountain Project Link — 0.1.4 → 0.1.5
