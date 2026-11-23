@@ -22,19 +22,82 @@
     const LINK_ID = 'nc-open-on-leetcode-link';
     const PROBLEM_PATH = /^\/problems\/([a-z0-9-]+)(?:\/|$)/;
 
-    // These NeetCode display titles differ from the slugs in its problem catalog.
+    // NeetCode's problem catalog pairs these custom route slugs with LeetCode slugs.
     const LEETCODE_SLUGS = new Map([
-        ['149', 'max-points-on-a-line'],
-        ['380', 'insert-delete-getrandom-o1'],
-        ['446', 'arithmetic-slices-ii-subsequence'],
-        ['515', 'find-largest-value-in-each-tree-row'],
-        ['904', 'fruit-into-baskets'],
-        ['1343', 'number-of-sub-arrays-of-size-k-and-average-greater-than-or-equal-to-threshold'],
-        ['1481', 'least-number-of-unique-integers-after-k-removals'],
-        ['1611', 'minimum-one-bit-operations-to-make-integers-zero'],
-        ['1863', 'sum-of-all-subset-xor-totals'],
-        ['2700', 'differences-between-two-objects'],
-        ['3572', 'maximize-ysum-by-picking-a-triplet-of-distinct-xvalues'],
+        ['anagram-groups', 'group-anagrams'],
+        ['binary-tree-diameter', 'diameter-of-binary-tree'],
+        ['binary-tree-from-preorder-and-inorder-traversal', 'construct-binary-tree-from-preorder-and-inorder-traversal'],
+        ['buy-and-sell-crypto', 'best-time-to-buy-and-sell-stock'],
+        ['buy-and-sell-crypto-with-cooldown', 'best-time-to-buy-and-sell-stock-with-cooldown'],
+        ['cheapest-flight-path', 'cheapest-flights-within-k-stops'],
+        ['combination-target-sum', 'combination-sum'],
+        ['combination-target-sum-ii', 'combination-sum-ii'],
+        ['combinations-of-a-phone-number', 'letter-combinations-of-a-phone-number'],
+        ['copy-linked-list-with-random-pointer', 'copy-list-with-random-pointer'],
+        ['count-connected-components', 'number-of-connected-components-in-an-undirected-graph'],
+        ['count-number-of-islands', 'number-of-islands'],
+        ['count-paths', 'unique-paths'],
+        ['count-squares', 'detect-squares'],
+        ['count-subsequences', 'distinct-subsequences'],
+        ['depth-of-binary-tree', 'maximum-depth-of-binary-tree'],
+        ['design-twitter-feed', 'design-twitter'],
+        ['design-word-search-data-structure', 'design-add-and-search-words-data-structure'],
+        ['duplicate-integer', 'contains-duplicate'],
+        ['eating-bananas', 'koko-eating-bananas'],
+        ['find-duplicate-integer', 'find-the-duplicate-number'],
+        ['find-median-in-a-data-stream', 'find-median-from-data-stream'],
+        ['find-target-in-rotated-sorted-array', 'search-in-rotated-sorted-array'],
+        ['foreign-dictionary', 'alien-dictionary'],
+        ['implement-prefix-tree', 'implement-trie-prefix-tree'],
+        ['insert-new-interval', 'insert-interval'],
+        ['invert-a-binary-tree', 'invert-binary-tree'],
+        ['is-anagram', 'valid-anagram'],
+        ['is-palindrome', 'valid-palindrome'],
+        ['islands-and-treasure', 'walls-and-gates'],
+        ['kth-largest-integer-in-a-stream', 'kth-largest-element-in-a-stream'],
+        ['kth-smallest-integer-in-bst', 'kth-smallest-element-in-a-bst'],
+        ['level-order-traversal-of-binary-tree', 'binary-tree-level-order-traversal'],
+        ['linked-list-cycle-detection', 'linked-list-cycle'],
+        ['longest-increasing-path-in-matrix', 'longest-increasing-path-in-a-matrix'],
+        ['longest-repeating-substring-with-replacement', 'longest-repeating-character-replacement'],
+        ['longest-substring-without-duplicates', 'longest-substring-without-repeating-characters'],
+        ['lowest-common-ancestor-in-binary-search-tree', 'lowest-common-ancestor-of-a-binary-search-tree'],
+        ['max-water-container', 'container-with-most-water'],
+        ['meeting-schedule', 'meeting-rooms'],
+        ['meeting-schedule-ii', 'meeting-rooms-ii'],
+        ['merge-k-sorted-linked-lists', 'merge-k-sorted-lists'],
+        ['merge-triplets-to-form-target', 'merge-triplets-to-form-target-triplet'],
+        ['merge-two-sorted-linked-lists', 'merge-two-sorted-lists'],
+        ['min-cost-to-connect-points', 'min-cost-to-connect-all-points'],
+        ['minimum-interval-including-query', 'minimum-interval-to-include-each-query'],
+        ['minimum-stack', 'min-stack'],
+        ['minimum-window-with-characters', 'minimum-window-substring'],
+        ['non-cyclical-number', 'happy-number'],
+        ['number-of-one-bits', 'number-of-1-bits'],
+        ['permutation-string', 'permutation-in-string'],
+        ['pow-x-n', 'powx-n'],
+        ['products-of-array-discluding-self', 'product-of-array-except-self'],
+        ['reconstruct-flight-path', 'reconstruct-itinerary'],
+        ['remove-node-from-end-of-linked-list', 'remove-nth-node-from-end-of-list'],
+        ['reorder-linked-list', 'reorder-list'],
+        ['reverse-a-linked-list', 'reverse-linked-list'],
+        ['rotate-matrix', 'rotate-image'],
+        ['rotting-fruit', 'rotting-oranges'],
+        ['same-binary-tree', 'same-tree'],
+        ['search-2d-matrix', 'search-a-2d-matrix'],
+        ['search-for-word', 'word-search'],
+        ['search-for-word-ii', 'word-search-ii'],
+        ['set-zeroes-in-matrix', 'set-matrix-zeroes'],
+        ['string-encode-and-decode', 'encode-and-decode-strings'],
+        ['subtree-of-a-binary-tree', 'subtree-of-another-tree'],
+        ['task-scheduling', 'task-scheduler'],
+        ['three-integer-sum', '3sum'],
+        ['top-k-elements-in-list', 'top-k-frequent-elements'],
+        ['two-integer-sum', 'two-sum'],
+        ['two-integer-sum-ii', 'two-sum-ii-input-array-is-sorted'],
+        ['valid-binary-search-tree', 'validate-binary-search-tree'],
+        ['valid-tree', 'graph-valid-tree'],
+        ['validate-parentheses', 'valid-parentheses'],
     ]);
 
     function getLeetCodeUrl(title) {
@@ -46,20 +109,13 @@
 
         const description = document.querySelector('meta[property="og:description"]')
             ?? document.querySelector('meta[name="og:description"], meta[name="description"]');
-        const match = description?.content.match(/^LeetCode\s+(\d+)\.\s+([\s\S]+)/i);
-        if (!match) return null;
+        if (!/^LeetCode\s+\d+\.\s+/i.test(description?.content ?? '')) return null;
 
-        const summary = match[2].trim().toLowerCase();
-        const heading = title.toLowerCase();
-        if (summary !== heading && !summary.startsWith(`${heading} `) && !summary.startsWith(`${heading}\n`)) {
-            return null;
-        }
+        const pageTitle = document.querySelector('meta[property="og:title"]')?.content.trim();
+        if (pageTitle !== `${title} - NeetCode`) return null;
 
-        const slug = LEETCODE_SLUGS.get(match[1]) ?? heading
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/[\s-]+/g, '-')
-            .replace(/^-|-$/g, '');
-        return slug ? `https://leetcode.com/problems/${slug}/` : null;
+        const slug = LEETCODE_SLUGS.get(problem) ?? problem;
+        return `https://leetcode.com/problems/${slug}/`;
     }
 
     function createLink(url) {

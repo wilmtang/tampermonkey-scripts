@@ -11,6 +11,7 @@ function loadProblem({ slug, title, description }) {
     const state = {
         heading: title,
         metadata: { content: description },
+        pageTitle: { content: `${title} - NeetCode` },
         canonical: { href: `https://neetcode.io/problems/${slug}/question` },
     };
     const location = new URL(state.canonical.href);
@@ -35,6 +36,7 @@ function loadProblem({ slug, title, description }) {
                 if (selector === 'h1.problem-title') return titleElement;
                 if (selector.startsWith('link[rel=')) return state.canonical;
                 if (selector === 'meta[property="og:description"]') return state.metadata;
+                if (selector === 'meta[property="og:title"]') return state.pageTitle;
                 return null;
             },
             getElementById: (id) => id === LINK_ID ? link : null,
@@ -51,7 +53,7 @@ function loadProblem({ slug, title, description }) {
     return { state, location, onMutation, get link() { return link; } };
 }
 
-test('uses the title from the heading when Open Graph metadata includes description text', () => {
+test('uses the catalog alias when Open Graph metadata includes description text', () => {
     const page = loadProblem({
         slug: 'two-integer-sum',
         title: 'Two Sum',
@@ -64,7 +66,7 @@ test('uses the title from the heading when Open Graph metadata includes descript
     assert.equal(page.link, originalLink);
 });
 
-test('uses the catalog slug when the title does not match it', () => {
+test('uses the canonical route when both sites share a slug that differs from the title', () => {
     const page = loadProblem({
         slug: 'insert-delete-getrandom-o1',
         title: 'Insert Delete Get Random O(1)',
@@ -85,6 +87,7 @@ test('removes the stale link while the next problem loads and restores it when t
 
     page.state.canonical.href = page.location.href;
     page.state.metadata.content = 'Leetcode 49. Group Anagrams Given an array of strings…';
+    page.state.pageTitle.content = 'Group Anagrams - NeetCode';
     page.onMutation();
     assert.equal(page.link, undefined);
 
@@ -95,6 +98,24 @@ test('removes the stale link while the next problem loads and restores it when t
     page.location.pathname = '/roadmap';
     page.onMutation();
     assert.equal(page.link, undefined);
+});
+
+test('waits for the new heading and handles a NeetCode title that differs from LeetCode', () => {
+    const page = loadProblem({
+        slug: 'two-integer-sum',
+        title: 'Two Sum',
+        description: 'Leetcode 1. Two Sum Given an array of integers…',
+    });
+    page.location.pathname = '/problems/two-integer-sum-ii/question';
+    page.state.canonical.href = page.location.href;
+    page.state.metadata.content = 'Leetcode 167. Two Sum II Input Array Is Sorted Given a sorted array…';
+    page.state.pageTitle.content = 'Two Integer Sum II - NeetCode';
+    page.onMutation();
+    assert.equal(page.link, undefined);
+
+    page.state.heading = 'Two Integer Sum II';
+    page.onMutation();
+    assert.equal(page.link.href, 'https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/');
 });
 
 test('omits the link when the problem has no LeetCode metadata', () => {
