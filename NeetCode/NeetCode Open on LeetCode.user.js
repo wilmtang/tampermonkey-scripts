@@ -4,12 +4,14 @@
 // ==UserScript==
 // @name         NeetCode Open on LeetCode
 // @namespace    https://github.com/wilmtang/tampermonkey-scripts
-// @version      4.3
+// @version      4.4
 // @description  Adds an Open on LeetCode link beside the title on NeetCode problem pages
 // @author       wilmtang
 // @license      AGPL-3.0-or-later
 // @homepageURL  https://github.com/wilmtang/tampermonkey-scripts/tree/main/NeetCode
 // @supportURL   https://github.com/wilmtang/tampermonkey-scripts/issues
+// @updateURL    https://update.greasyfork.org/scripts/606875/NeetCode%20Open%20on%20LeetCode.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/606875/NeetCode%20Open%20on%20LeetCode.user.js
 // @match        https://neetcode.io/*
 // @grant        none
 // @run-at       document-idle

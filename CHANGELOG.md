@@ -3,6 +3,10 @@
 User-facing changes per script. Dates are when the change landed in this
 repository; Greasy Fork picks up published scripts on the next sync.
 
+## 2026-11-23 — NeetCode Open on LeetCode
+
+- Restored the LeetCode link on NeetCode problem pages, including renamed problems and in-page navigation. Published on Greasy Fork as script `606875`.
+
 ## 2026-11-19 — Spotify Web right-click and copy
 
 ### Spotify Web Enable Right-Click and Copy — 1.0.0 → 1.0.1
